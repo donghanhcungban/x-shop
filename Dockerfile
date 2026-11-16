@@ -17,7 +17,7 @@
 # 2026-02-24); `docker pull …@sha256:dd9d…` khớp cùng digest. Nâng: đổi .nvmrc + tag + digest trong CÙNG commit.
 # Không có bí mật trong image: không ARG/ENV bí mật; bí mật chỉ vào lúc chạy (env_file / kho bí mật của nền tảng).
 
-FROM node:22.22.0-bookworm-slim@sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94 AS node-base
+FROM node:26.13.0-bookworm-slim@sha256:add5c17c14752c54d2f3d519ec46a3815684d41c33f198bcb09fb998f7dcbf68 AS node-base
 # Tắt telemetry của công cụ ở mọi stage (PM-RISK-006, docs/ops/ENV.md §Telemetry).
 ENV MEDUSA_DISABLE_TELEMETRY=true \
     NEXT_TELEMETRY_DISABLED=1
