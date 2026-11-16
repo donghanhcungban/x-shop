@@ -1,0 +1,24 @@
+x-shop
+Copyright (c) 2026 www-donghanhcungban-org
+
+Toàn bộ repo (mã, tài liệu, đặc tả, ảnh minh hoạ demo) phát hành theo giấy phép MIT — xem LICENSE —
+trừ các thành phần bên thứ ba liệt kê dưới đây, giữ nguyên giấy phép gốc của chúng.
+
+Thành phần bên thứ ba
+---------------------
+
+Vietnamese Provinces Database — packages/domain/data/vn-admin-units.json (bản chép gọn)
+  Copyright (c) 2021 Thang Le Quoc. Giấy phép: MIT, nguyên văn tại packages/domain/data/vn-admin-units.LICENSE.
+  Nguồn: https://github.com/thanglequoc/vietnamese-provinces-database (commit 8b78ba5).
+
+X-Templates — .xtemplates/
+  Copyright (c) 2026 www-donghanhcungban-org. Giấy phép: MIT (https://github.com/www-donghanhcungban-org/X-Templates).
+
+Phụ thuộc npm/pnpm (package.json, pnpm-lock.yaml) không nằm trong repo; mỗi gói giữ giấy phép riêng.
+
+Nhãn hiệu
+---------
+
+Tên sản phẩm và tổ chức nhắc trong repo (ví dụ Medusa, Next.js, VNPAY, GHN, PostgreSQL, Redis, GitHub; Techcombank,
+VietQR, NAPAS 247 trên ảnh mã ủng hộ docs/assets/) là nhãn hiệu của chủ sở hữu tương ứng, chỉ dùng để gọi đúng tên.
+x-shop không liên kết với, không được tài trợ hay xác nhận bởi các chủ sở hữu đó.

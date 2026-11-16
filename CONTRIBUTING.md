@@ -25,7 +25,6 @@ Làm theo [README](README.md): ba lệnh `corepack enable`, `pnpm install --froz
 
 ## Giấy phép đóng góp
 
-Dự án chưa chọn giấy phép (chờ chủ dự án quyết). Khi mở PR, bạn đồng ý để chủ dự án cấp phép phần đóng góp theo giấy phép
-sẽ được chọn.
+Dự án phát hành theo giấy phép [MIT](LICENSE). Khi mở PR, bạn đồng ý cấp phép phần đóng góp theo cùng giấy phép MIT.
 
 Quy tắc ứng xử: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Lỗ hổng bảo mật: [SECURITY.md](SECURITY.md).

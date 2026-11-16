@@ -127,7 +127,7 @@ Next.js App Router + TypeScript (storefront) · Medusa v2 (commerce + Admin) · 
 ## 9. Các bên
 | Vai trò | Quyết định |
 |---|---|
-| Chủ dự án (seeker19110) | Phạm vi, hợp đồng VNPAY/GHN, chính sách đổi trả/thuế, dữ liệu thật, production |
+| Chủ dự án (www-donghanhcungban-org) | Phạm vi, hợp đồng VNPAY/GHN, chính sách đổi trả/thuế, dữ liệu thật, production |
 | Phiên chính (agent) | Quyết định kỹ thuật theo AGENTS.md §5, ghi D-NNN |
 
 ## 10. Câu hỏi mở (đặc tả §16.3) — mặc định thiết kế, chủ dự án đổi được qua cấu hình
