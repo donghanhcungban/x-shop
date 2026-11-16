@@ -16,7 +16,7 @@
 
 | Dịch vụ | Dùng để | Chủ hiện tại | Chủ mới | Cơ chế chuyển | Ngày chuyển | Ngày xoay |
 | --- | --- | --- | --- | --- | --- | --- |
-| GitHub — kho `www-donghanhcungban-org/x-shop` | mã nguồn, CI (`ci`, `secret-scan`, `vuln-scan`, `pr-steward`), ruleset nhánh | tài khoản `seeker19110` | [chủ dự án điền] | Transfer repository sang tổ chức/chủ mới; mời thành viên với vai trò tối thiểu | — | — |
+| GitHub — kho `www-donghanhcungban-org/x-shop` | mã nguồn, CI (`ci`, `secret-scan`, `vuln-scan`, `pr-steward`), ruleset nhánh | tài khoản `www-donghanhcungban-org` | [chủ dự án điền] | Transfer repository sang tổ chức/chủ mới; mời thành viên với vai trò tối thiểu | — | — |
 | GitHub Actions secrets | `GITLEAKS_LICENSE` (giấy phép quét, tuỳ chọn), `XT_STEWARD_TOKEN` (tuỳ chọn; vắng thì dùng `github.token`) | chủ kho | [chủ dự án điền] | Nhập lại ở Settings → Secrets của kho mới (không chuyển được giá trị) | — | — |
 | Kho bí mật production | giữ biến môi trường của server + worker backend và storefront | chưa có (chưa chọn nền tảng — RUNBOOK §8.1) | — | Theo nền tảng được chọn | — | — |
 | Hạ tầng triển khai (`hosting`) | chạy backend, storefront, Postgres, Redis, backup, log | chưa có (chưa chọn) | — | Chuyển ownership tổ chức/dự án của nền tảng | — | — |
