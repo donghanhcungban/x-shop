@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Medusa v2 backend của x-shop (server + worker + Admin).",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "scripts": {
     "build": "pnpm --filter @x-shop/domain build && MEDUSA_DISABLE_TELEMETRY=true medusa build",
     "start": "MEDUSA_DISABLE_TELEMETRY=true medusa start -H \"${HOST:-127.0.0.1}\"",

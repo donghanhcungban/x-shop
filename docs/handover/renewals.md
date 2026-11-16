@@ -9,7 +9,7 @@
 | --- | --- | --- | --- | --- | --- |
 | Tên miền | chưa có | — | [chủ dự án điền] | ≥ 30 ngày | chưa mua; bật tự gia hạn và khoá chuyển khi mua |
 | Chứng chỉ TLS | chưa có (phụ thuộc hạ tầng) | — | nền tảng triển khai | tự động gia hạn | cần bằng chứng gia hạn tự động sau khi chọn hạ tầng (RUNBOOK §8.1) |
-| Giấy phép mã nguồn (LICENSE) | chưa tạo, chờ chủ dự án chọn (H-01 trong PLAN-2) | không áp dụng | chủ dự án | — | không có hạn nhưng là điều kiện phát hành công khai |
+| Giấy phép mã nguồn (LICENSE) | MIT, chủ dự án chốt 2026-11-16 (H-01 trong PLAN-2) | không áp dụng | chủ dự án | — | không có hạn; thành phần bên thứ ba ở `NOTICE` |
 | Hợp đồng merchant VNPAY | chưa có hợp đồng; khoá `VNPAY_TMN_CODE`/`VNPAY_HASH_SECRET` do VNPAY cấp | — | [chủ dự án điền] | ≥ 30 ngày | `docs/compliance/vendors.yaml` (id `vnpay`) |
 | Hợp đồng GHN | chưa có hợp đồng; `GHN_TOKEN` | — (hạn token: chưa xác minh) | [chủ dự án điền] | ≥ 30 ngày | `vendors.yaml` (id `ghn`) |
 | Nhà cung cấp email/SMS | chưa chọn | — | [chủ dự án điền] | ≥ 30 ngày | `vendors.yaml` (id `notify-provider`) |

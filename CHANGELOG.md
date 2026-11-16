@@ -7,6 +7,9 @@ Mọi thay đổi đáng chú ý của dự án được ghi ở đây, theo [Ke
 
 ### Added
 
+- Mở mã theo giấy phép MIT: `LICENSE`, `NOTICE` (thành phần bên thứ ba, nhãn hiệu), trường `license` trong `package.json`.
+- Mục "Ủng hộ và liên hệ" trong README (mã VietQR, liên hệ, hỗ trợ triển khai) và `.github/FUNDING.yml`.
+
 - Bộ tài liệu sức khoẻ cộng đồng: `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `SUPPORT.md`,
   mẫu issue, `security.txt`, `.gitattributes`.
 - Job CI `readme-smoke` chạy các lệnh trong README từ clone sạch.
