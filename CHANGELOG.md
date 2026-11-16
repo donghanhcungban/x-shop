@@ -7,6 +7,7 @@ Mọi thay đổi đáng chú ý của dự án được ghi ở đây, theo [Ke
 
 ### Changed
 
+- Nâng Medusa 2.22.2 → 2.22.7 (cùng nhóm phụ thuộc minor/patch). Route RBAC native `/rbac/*` mà Medusa ≥ 2.22.3 mở ngoài `/admin` bị đóng: 403 với mọi actor và method, kể cả owner (ma trận vai trò của dự án là nguồn duy nhất). `GET /admin/modules` (khung dashboard gọi) mở cho người có vai trò; `/admin/audit-logs*` cố ý đóng.
 - Chuyển chủ repo sang `www-donghanhcungban-org`: cập nhật liên kết repo (FUNDING, mẫu issue, security.txt, script/test liên quan) và dòng bản quyền trong `LICENSE`/`NOTICE`; link cũ vẫn chuyển hướng.
 
 ### Added
