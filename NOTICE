@@ -1,5 +1,5 @@
 x-shop
-Copyright (c) 2026 seeker19110
+Copyright (c) 2026 www-donghanhcungban-org
 
 Toàn bộ repo (mã, tài liệu, đặc tả, ảnh minh hoạ demo) phát hành theo giấy phép MIT — xem LICENSE —
 trừ các thành phần bên thứ ba liệt kê dưới đây, giữ nguyên giấy phép gốc của chúng.
@@ -12,7 +12,7 @@ Vietnamese Provinces Database — packages/domain/data/vn-admin-units.json (bả
   Nguồn: https://github.com/thanglequoc/vietnamese-provinces-database (commit 8b78ba5).
 
 X-Templates — .xtemplates/
-  Copyright (c) 2026 seeker19110. Giấy phép: MIT (https://github.com/seeker19110/X-Templates).
+  Copyright (c) 2026 www-donghanhcungban-org. Giấy phép: MIT (https://github.com/www-donghanhcungban-org/X-Templates).
 
 Phụ thuộc npm/pnpm (package.json, pnpm-lock.yaml) không nằm trong repo; mỗi gói giữ giấy phép riêng.
 
