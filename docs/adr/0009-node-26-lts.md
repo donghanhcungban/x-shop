@@ -27,7 +27,7 @@ Accepted (2026-11-17). Thay dòng "Runtime" của ADR-0004 (Node.js 22.22.x); ph
 - Runtime: Node.js **26.13.1** (`.nvmrc`), `engines.node` `>=26.13.1 <27` ở `package.json` gốc và `apps/backend`; `@types/node` `^26.6.6`. CI đọc `.nvmrc` qua `actions/setup-node` (`node-version-file`) như trước.
 - Image nền: `node:26.13.1-bookworm-slim` ghim digest manifest list `sha256:5df79989ed68…` (Docker Hub, đọc 2026-11-17).
 - pnpm: `scripts/install-pnpm.mjs` đọc `packageManager` (chỉ nhận dạng `pnpm@X.Y.Z`), có đúng bản thì không làm gì, thiếu/lệch thì `npm install --global --ignore-scripts pnpm@<bản>` rồi kiểm lại `pnpm --version`. Dùng ở README (khối "Bắt đầu nhanh", job `onboarding-smoke`), `setup` của `xt.yaml`, `pr-policy.yml`, stage `pnpm` của Dockerfile. `packageManager` vẫn là nguồn phiên bản duy nhất.
-- Toàn vẹn gói pnpm: npm kiểm `integrity` (sha512) của tarball theo metadata registry — cùng gốc tin cậy (registry npm) với corepack trước đây; `--ignore-scripts` không chạy script vòng đời. Runtime image vẫn bỏ npm/npx/yarn (và đường dẫn corepack nếu image nền có lại).
+- Toàn vẹn gói pnpm — **mất một lớp kiểm so với trước**: corepack (kèm Node 22) kiểm chữ ký registry npm và hash của bản pnpm tải về; `npm install -g pnpm@X` chỉ so `integrity` (sha512) của tarball với metadata do chính registry trả, không kiểm chữ ký và không có hash ghim trong repo. Chấp nhận tạm thời vì: bản đã phát hành trên npm là bất biến (không ghi đè được cùng số phiên bản), tải qua TLS, và pnpm 10.28.0 không có phụ thuộc lẫn script cài đặt (`npm view pnpm@10.28.0 dependencies` rỗng; cài với `--ignore-scripts`). Việc tiếp theo (BASE-DEP-008): `packageManager` kèm `+sha512.<hex>` và `install-pnpm.mjs` kiểm hash này trên tarball trước khi cài. Runtime image vẫn bỏ npm/npx/yarn (và đường dẫn corepack nếu image nền có lại).
 
 ## Hệ quả
 
@@ -38,6 +38,6 @@ Accepted (2026-11-17). Thay dòng "Runtime" của ADR-0004 (Node.js 22.22.x); ph
 
 ## Điều kiện đọc lại
 
-- Node 26 vào Maintenance (2027-10-20) — cân nhắc lên Node 28 LTS khi dòng đó thành LTS.
-- pnpm đổi cách phân phối khuyến nghị (vd. bản độc lập có checksum) hoặc `packageManager` cần kèm hash → mở rộng `install-pnpm.mjs` kèm test.
+- Node 26 vào Maintenance (2027-10-20), cùng ngày Node 27 thành LTS (schedule.json: `v27` lts 2027-10-20, end 2030-04-30) — cân nhắc lên Node 27 LTS.
+- pnpm đổi cách phân phối khuyến nghị (vd. bản độc lập có checksum) hoặc việc kiểm hash `packageManager` ở trên hoàn tất → cập nhật mục Toàn vẹn gói pnpm.
 - Medusa/Next nâng `engines` loại trừ Node 26.
