@@ -7,6 +7,8 @@ Mọi thay đổi đáng chú ý của dự án được ghi ở đây, theo [Ke
 
 ### Changed
 
+- `packageManager` ghim kèm hash (`pnpm@10.28.0+sha512.<hex>`); `scripts/install-pnpm.mjs` `npm pack` tarball vào thư
+  mục tạm, kiểm sha512 với hash ghim, lệch thì dừng, khớp mới cài từ tarball (`--ignore-scripts`) — BASE-DEP-008.
 - Runtime lên Node.js 26 LTS (`.nvmrc` 26.13.1, `engines` `>=26.13.1 <27`, image nền `node:26.13.1-bookworm-slim`,
   `@types/node` 26) — ADR-0009, thay #37. Node 26 không kèm corepack: cài pnpm đúng `packageManager` bằng
   `node scripts/install-pnpm.mjs` (README, `xt.yaml` `setup`, `pr-policy.yml`, Dockerfile).

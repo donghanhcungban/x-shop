@@ -17,8 +17,8 @@ Không bước tay nào khác: `pnpm test` chạy test đơn vị, không cần 
 ## Yêu cầu môi trường
 
 - Node.js `26.13.1` (Node 26 LTS, ghim ở `.nvmrc`; `engines`: `>=26.13.1 <27` — [ADR-0009](docs/adr/0009-node-26-lts.md)).
-- pnpm `10.28.0` (khai ở `packageManager`; `node scripts/install-pnpm.mjs` cài đúng bản qua npm — Node 26 không còn kèm
-  corepack).
+- pnpm `10.28.0` (khai ở `packageManager` kèm `+sha512.<hex>`; `node scripts/install-pnpm.mjs` tải tarball, kiểm sha512
+  với hash ghim rồi mới cài qua npm — Node 26 không còn kèm corepack).
 - Chạy backend và test tích hợp: PostgreSQL 16 và Redis 7 (`bash scripts/dev-services.sh` dựng bản cục bộ).
 
 ## Cài và chạy
