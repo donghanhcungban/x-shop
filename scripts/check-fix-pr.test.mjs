@@ -1123,6 +1123,45 @@ test("parseJunit (node thật): cancelledByParent → broken/hook; cause TypeErr
   assert.throws(() => parseJunit('<testsuites><testcase name="a"><failure>x', "a"), /failure không đóng/);
 });
 
+// Mẫu thật của node 26.13.1 `--test-reporter=junit` (rút gọn): util.inspect in `cause: TypeError [Error]: …` (node 22 không
+// có thẻ `[Error]`) — namespace import gọi export chưa có vẫn phải là "nạp"; lỗi thật vẫn `failed`.
+const JUNIT_NODE26 = `<?xml version="1.0" encoding="utf-8"?>
+<testsuites>
+	<testcase name="gọi export mới" time="0.000444" classname="test" failure="lib.sum is not a function">
+		<failure type="testCodeFailure" message="lib.sum is not a function">
+[Error [ERR_TEST_FAILURE]: lib.sum is not a function] {
+  code: 'ERR_TEST_FAILURE',
+  failureType: 'testCodeFailure',
+  cause: TypeError [Error]: lib.sum is not a function
+      at TestContext.&lt;anonymous> (file:///repo/scripts/lib.test.mjs:4:7)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+}
+		</failure>
+	</testcase>
+	<testcase name="lỗi thật" time="0.000300" classname="test" failure="cart.items.map is not a function">
+		<failure type="testCodeFailure" message="cart.items.map is not a function">
+[Error [ERR_TEST_FAILURE]: cart.items.map is not a function] {
+  code: 'ERR_TEST_FAILURE',
+  failureType: 'testCodeFailure',
+  cause: TypeError [Error]: cart.items.map is not a function
+      at TestContext.&lt;anonymous> (file:///repo/scripts/lib.test.mjs:8:7)
+}
+		</failure>
+	</testcase>
+</testsuites>
+`;
+
+test("parseJunit (node 26 thật): `TypeError [Error]:` trên binding import → broken/nạp; biến cục bộ → failed", () => {
+  const b = importBindings('import * as lib from "./lib.mjs";');
+  assert.deepEqual(
+    parseJunit(JUNIT_NODE26, "scripts/lib.test.mjs", b).cases.map((c) => [c.name, c.status, c.why]),
+    [
+      ["gọi export mới", "broken", "nạp"],
+      ["lỗi thật", "failed", undefined],
+    ],
+  );
+});
+
 test("regressionVerdict: case đỏ trên base chỉ vì export mới (report thật) → đỏ, không tính là tái hiện", () => {
   const plan = planRegression(["packages/domain/src/zz.test.ts"]);
   const base = [

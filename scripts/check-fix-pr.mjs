@@ -556,6 +556,10 @@ function readTag(xml, lt) {
 // `cancelledByParent` = case bị huỷ vì hook `before` của suite cha lỗi.
 const HOOK_FAILURE_TYPES = new Set(["cancelledByParent", "hookFailed"]);
 
+// Node 26 (util.inspect) in `cause` dạng `TypeError [Error]: …` (node 22: `TypeError: …`) — bỏ thẻ `[Error]` để các regex
+// `^TypeError: ` của `classifyFailure` khớp như cũ. Thẻ mã lỗi (`Error [ERR_MODULE_NOT_FOUND]: `) giữ nguyên.
+const INSPECT_ERROR_TAG_RE = /^([\w$.]+) \[Error\]: /;
+
 /**
  * Dòng lỗi đầu của failure JUnit node: `cause: <Loại>: <thông điệp>` trong thân (thông điệp thuộc tính không có tên loại
  * lỗi); không có → thuộc tính `message`. Quét bằng indexOf.
@@ -564,7 +568,10 @@ function firstError(body, message) {
   const at = body.indexOf("cause: ");
   if (at < 0) return message;
   const end = body.indexOf("\n", at);
-  return body.slice(at + "cause: ".length, end < 0 ? body.length : end).trim();
+  return body
+    .slice(at + "cause: ".length, end < 0 ? body.length : end)
+    .trim()
+    .replace(INSPECT_ERROR_TAG_RE, "$1: ");
 }
 
 /** Case lỗi cấp file của node --test: tên case = đường dẫn file đã truyền (tương đối hay tuyệt đối). */
