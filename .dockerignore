@@ -8,6 +8,8 @@
 !pnpm-lock.yaml
 !pnpm-workspace.yaml
 !tsconfig.base.json
+# Cài pnpm đúng `packageManager` (stage `pnpm` của Dockerfile; ADR-0009).
+!scripts/install-pnpm.mjs
 
 # Mã ba gói.
 !packages/domain

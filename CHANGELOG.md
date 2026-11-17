@@ -7,6 +7,9 @@ Mọi thay đổi đáng chú ý của dự án được ghi ở đây, theo [Ke
 
 ### Changed
 
+- Runtime lên Node.js 26 LTS (`.nvmrc` 26.13.1, `engines` `>=26.13.1 <27`, image nền `node:26.13.1-bookworm-slim`,
+  `@types/node` 26) — ADR-0009, thay #37. Node 26 không kèm corepack: cài pnpm đúng `packageManager` bằng
+  `node scripts/install-pnpm.mjs` (README, `xt.yaml` `setup`, `pr-policy.yml`, Dockerfile).
 - Chuyển chủ repo sang `www-donghanhcungban-org`: cập nhật liên kết repo (FUNDING, mẫu issue, security.txt, script/test liên quan) và dòng bản quyền trong `LICENSE`/`NOTICE`; link cũ vẫn chuyển hướng.
 
 ### Added

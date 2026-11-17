@@ -33,7 +33,8 @@ async function hangingTcp() {
   const received: Buffer[] = [];
   const server = net.createServer((s) => {
     sockets.add(s);
-    s.on("data", (d) => received.push(d));
+    // @types/node 26 khai `data` là `string | Buffer` (string chỉ khi gọi setEncoding — ở đây không gọi).
+    s.on("data", (d) => received.push(Buffer.isBuffer(d) ? d : Buffer.from(d)));
     s.on("error", () => undefined);
   });
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", () => r()));
