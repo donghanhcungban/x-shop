@@ -16,6 +16,7 @@ on:
     paths:
       - Dockerfile
       - .dockerignore
+      - scripts/install-pnpm.mjs
       - .nvmrc
       - package.json
       - pnpm-lock.yaml
