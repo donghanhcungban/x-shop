@@ -2,7 +2,7 @@ import type { MedusaContainer } from "@medusajs/framework/types";
 import { Modules } from "@medusajs/framework/utils";
 import { medusaIntegrationTestRunner } from "@medusajs/test-utils";
 import type Redis from "ioredis";
-import { drainCatalogIndex } from "../../src/lib/catalog/indexer";
+import { CATALOG_INDEX_LOCK, CATALOG_REBUILD_LOCK, drainCatalogIndex } from "../../src/lib/catalog/indexer";
 import { CHECKOUT_CONFIG } from "../../src/lib/checkout/config";
 import {
   CheckoutError,
@@ -172,8 +172,9 @@ medusaIntegrationTestRunner({
     afterEach(async () => {
       outageBeforeFinalize.clear();
       await restoreRedis();
-      // Không chủ nào còn được gia hạn khóa trong tiến trình (không rò khóa sau sự cố).
-      expect(activeLeaseCount()).toBe(0);
+      // Không chủ nào còn được gia hạn khóa checkout/tồn trong tiến trình (không rò khóa sau sự cố). Bỏ qua khóa read model:
+      // lượt đồng bộ catalog do sự kiện tồn kho kích có thể đang giữ lease hợp lệ (như checkout-lock-outage-paths, T-146).
+      expect(activeLeaseCount([CATALOG_INDEX_LOCK, CATALOG_REBUILD_LOCK])).toBe(0);
     });
 
     it("mất kết nối Redis khóa → 503 LOCK_UNAVAILABLE + Retry-After, không đơn/không giữ hàng, catalog vẫn 200; cùng key sau khi Redis về → đúng một đơn", async () => {
