@@ -6,7 +6,7 @@ hàng qua GHN, có đổi trả và đối soát cho chủ shop. Đặc tả g�
 ## Bắt đầu nhanh (từ clone sạch đến test xanh, 3 lệnh)
 
 ```bash
-corepack enable
+node scripts/install-pnpm.mjs
 pnpm install --frozen-lockfile
 pnpm test
 ```
@@ -16,8 +16,9 @@ Không bước tay nào khác: `pnpm test` chạy test đơn vị, không cần 
 
 ## Yêu cầu môi trường
 
-- Node.js `22.22.0` (ghim ở `.nvmrc`; `engines`: `>=22.22.0 <23`).
-- pnpm `10.28.0` (khai ở `packageManager`; `corepack enable` tự lấy đúng bản).
+- Node.js `26.13.1` (Node 26 LTS, ghim ở `.nvmrc`; `engines`: `>=26.13.1 <27` — [ADR-0009](docs/adr/0009-node-26-lts.md)).
+- pnpm `10.28.0` (khai ở `packageManager` kèm `+sha512.<hex>`; `node scripts/install-pnpm.mjs` tải tarball, kiểm sha512
+  với hash ghim rồi mới cài qua npm — Node 26 không còn kèm corepack).
 - Chạy backend và test tích hợp: PostgreSQL 16 và Redis 7 (`bash scripts/dev-services.sh` dựng bản cục bộ).
 
 ## Cài và chạy

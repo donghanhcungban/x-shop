@@ -81,7 +81,7 @@ jobs:
       # D-096: `dev-task.sh gate-par` bỏ qua (`skip`, xanh) task để rỗng → `quality` xanh mà không chạy gì. Bước này đỏ (mọi
       # `delivery_phase`) tới khi xt.yaml khai lệnh thật cho `lint` và `test`; typecheck/build rỗng vẫn được. Đặt trước
       # `setup` để đỏ sớm, không tốn thời gian cài phụ thuộc.
-      # x-shop: Node ghim theo .nvmrc (Medusa 2.22 đòi >=22.22.0; ADR-0001).
+      # x-shop: Node ghim theo .nvmrc (Node 26 LTS — ADR-0009; Medusa 2.22 đòi >=22.22.0).
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
@@ -195,7 +195,7 @@ jobs:
       - name: Fixture không PII thật — `node scripts/check-fixtures.mjs` (QA-DATA-002)
         run: node scripts/check-fixtures.mjs
       - name: Test của các script kiểm kiến trúc/dữ liệu
-        run: pnpm depcruise:test && pnpm check:sql-safety:test && pnpm check:routes:test && node --test scripts/check-fixtures.test.mjs scripts/check-slo.test.mjs scripts/ops/explain-hot-paths.test.mjs scripts/n-minus-1.test.mjs e2e/smoke-tags.test.mjs e2e/lb.test.mjs e2e/args.test.mjs && pnpm load:test && pnpm check:vi-diacritics:test && pnpm check:authz:test && pnpm check:schema:test && pnpm check:ci-local:test && pnpm check:migrations:test && pnpm check:units:test && pnpm check:env-doc:test && pnpm check:domains:test
+        run: pnpm depcruise:test && pnpm check:sql-safety:test && pnpm check:routes:test && node --test scripts/check-fixtures.test.mjs scripts/check-slo.test.mjs scripts/ops/explain-hot-paths.test.mjs scripts/n-minus-1.test.mjs scripts/install-pnpm.test.mjs e2e/smoke-tags.test.mjs e2e/lb.test.mjs e2e/args.test.mjs && pnpm load:test && pnpm check:vi-diacritics:test && pnpm check:authz:test && pnpm check:schema:test && pnpm check:ci-local:test && pnpm check:migrations:test && pnpm check:units:test && pnpm check:env-doc:test && pnpm check:domains:test
       - name: Schema module tuỳ biến (FK ON DELETE/index, NOT NULL, CHECK) — `pnpm check:schema` (DB-MODEL-004)
         run: pnpm check:schema
       # x-shop (T-102): migration đã có trên nhánh đích giữ nguyên byte (blob hash git) + migration mới không phá huỷ trong
@@ -259,7 +259,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # x-shop: Node ghim theo .nvmrc (Medusa 2.22 đòi >=22.22.0; ADR-0001).
+      # x-shop: Node ghim theo .nvmrc (Node 26 LTS — ADR-0009; Medusa 2.22 đòi >=22.22.0).
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc

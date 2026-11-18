@@ -9,7 +9,7 @@ typecheck: "pnpm typecheck"
 test: "pnpm test && pnpm test:integration"
 build: "pnpm build"
 format: "pnpm format"
-setup: "corepack enable && pnpm install --frozen-lockfile"             # cài phụ thuộc trước mỗi job CI (npm ci · pip install …); trống = bỏ qua
+setup: "node scripts/install-pnpm.mjs && pnpm install --frozen-lockfile"             # cài phụ thuộc trước mỗi job CI (npm ci · pip install …); trống = bỏ qua
 format_check: "pnpm format:check"      # sàn M/L: kiểm format không ghi file, đỏ khi lệch
 coverage: "pnpm -r --if-present test:coverage"          # sàn M/L: test có ngưỡng coverage; artefact ra mktemp, không `|| true`
 format_file: "pnpm exec prettier --write --ignore-unknown {}"       # format MỘT file (hook PostToolUse), `{}` = đường dẫn; trống = mẫu dựng sẵn của khung
