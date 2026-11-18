@@ -12,25 +12,26 @@
 #           --build-arg NEXT_PUBLIC_SITE_URL=https://shop.example.vn --build-arg NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=pk_… \
 #           --build-arg XS_MEDIA_URL=https://media.shop.example.vn …   (SITE_URL + PUBLISHABLE_KEY bắt buộc)
 #
-# Base image: node 22.22.0 (đúng .nvmrc) bản Debian bookworm-slim, ghim digest MANIFEST LIST (đa kiến trúc). Digest lấy
-# 2026-10-30 từ https://hub.docker.com/v2/repositories/library/node/tags?name=22.22 (tag 22.22.0-bookworm-slim, cập nhật
-# 2026-02-24); `docker pull …@sha256:dd9d…` khớp cùng digest. Nâng: đổi .nvmrc + tag + digest trong CÙNG commit.
+# Base image: node 26.13.1 (đúng .nvmrc; Node 26 LTS — ADR-0009) bản Debian bookworm-slim, ghim digest MANIFEST LIST (đa
+# kiến trúc). Digest lấy 2026-11-17 từ https://hub.docker.com/v2/repositories/library/node/tags?name=26.13.1-bookworm-slim
+# (cập nhật 2026-11-11); `docker pull …@sha256:5df7…` khớp cùng digest. Nâng: đổi .nvmrc + tag + digest trong CÙNG commit.
 # Không có bí mật trong image: không ARG/ENV bí mật; bí mật chỉ vào lúc chạy (env_file / kho bí mật của nền tảng).
 
-FROM node:22.22.0-bookworm-slim@sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94 AS node-base
+FROM node:26.13.1-bookworm-slim@sha256:5df79989ed685e09f0a98019db4cebfb22fb9df1a53c0161664a011f7ff6b0f1 AS node-base
 # Tắt telemetry của công cụ ở mọi stage (PM-RISK-006, docs/ops/ENV.md §Telemetry).
 ENV MEDUSA_DISABLE_TELEMETRY=true \
     NEXT_TELEMETRY_DISABLED=1
 
 # ---------------------------------------------------------------------------------------------------------------------
-# Công cụ build: pnpm đúng `packageManager` của package.json qua corepack (kèm Node; corepack kiểm chữ ký gói từ npm).
+# Công cụ build: pnpm đúng `packageManager` của package.json qua `scripts/install-pnpm.mjs` (npm kèm Node, `--ignore-scripts`;
+# Node >= 25 không còn kèm corepack — ADR-0009). Chỉ có ở stage build: runtime-base dựng từ node-base, không có pnpm.
 FROM node-base AS pnpm
-ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
-    PNPM_HOME=/pnpm \
+ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH
 WORKDIR /app
 COPY package.json ./
-RUN corepack enable && pnpm --version
+COPY scripts/install-pnpm.mjs scripts/
+RUN node scripts/install-pnpm.mjs && pnpm --version
 
 # Khai báo workspace: chỉ manifest + lockfile → lớp cài phụ thuộc chỉ build lại khi lockfile/manifest đổi.
 FROM pnpm AS manifests
@@ -90,11 +91,12 @@ RUN pnpm --filter @x-shop/storefront build \
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Nền runtime:
-#  - nâng gói Debian lên bản vá bảo mật hiện có: tag node 22.22.0 đóng băng từ 2026-02-24, bookworm đã có bản vá sau đó
-#    (kiểm 2026-10-30 `apt list --upgradable` trong image gốc: libgnutls30, liblzma5, libpcre2-8-0, libgcrypt20,
-#    perl-base, tzdata thuộc bookworm-security). Không cài gói mới; apt kiểm chữ ký kho. Image cuối vẫn bất biến theo
+#  - nâng gói Debian lên bản vá bảo mật hiện có: tag node đóng băng ở ngày build của nó, bookworm-security có thể có bản vá
+#    sau đó (đã thấy với tag 22.22.0, kiểm 2026-10-30 `apt list --upgradable`: libgnutls30, liblzma5, libpcre2-8-0,
+#    libgcrypt20, perl-base, tzdata). Không cài gói mới; apt kiểm chữ ký kho. Image cuối vẫn bất biến theo
 #    digest của chính nó (build một lần, promote cùng digest — OPS-DEPLOY-001).
-#  - bỏ npm/corepack/yarn kèm image node (runtime không cài gói; bớt bề mặt tấn công và CVE của gói đi kèm).
+#  - bỏ npm/yarn kèm image node (runtime không cài gói; bớt bề mặt tấn công và CVE của gói đi kèm). Node 26 không còn
+#    corepack; đường dẫn corepack vẫn xoá (`rm -rf` không lỗi khi vắng) phòng image nền đổi.
 FROM node-base AS runtime-base
 RUN apt-get update \
     && apt-get upgrade -y \

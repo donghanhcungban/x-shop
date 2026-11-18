@@ -21,7 +21,7 @@
 
 | Hạng mục | Phiên bản dùng | Hết hỗ trợ (EOL) | Chủ | Nhắc | Nguồn |
 | --- | --- | --- | --- | --- | --- |
-| Node.js | 22.22.0 (`.nvmrc`) | 2027-04-30 | chủ dự án / phiên làm việc | `scripts/eol-check.mjs` chạy tuần (workflow `vuln-scan`, job eol-check), cảnh báo < 183 ngày | endoflife.date, chạy 2026-10-26 |
+| Node.js | 26.13.1 (`.nvmrc`, ADR-0009) | 2029-04-30 | chủ dự án / phiên làm việc | `scripts/eol-check.mjs` chạy tuần (workflow `vuln-scan`, job eol-check), cảnh báo < 183 ngày | github.com/nodejs/Release schedule.json, đọc 2026-11-17 |
 | PostgreSQL | 16 (`ci.yml`) | 2028-11-09 | như trên | như trên | endoflife.date, chạy 2026-10-26 |
 | Redis | 7 (`ci.yml`) | 2029-12-01 | như trên | như trên | endoflife.date, chạy 2026-10-26 |
 

@@ -4,7 +4,7 @@ Cảm ơn bạn đã quan tâm. Luật làm việc đầy đủ ở [`AGENTS.md`
 
 ## Chuẩn bị
 
-Làm theo [README](README.md): ba lệnh `corepack enable`, `pnpm install --frozen-lockfile`, `pnpm test`. Biến môi trường:
+Làm theo [README](README.md): ba lệnh `node scripts/install-pnpm.mjs`, `pnpm install --frozen-lockfile`, `pnpm test`. Biến môi trường:
 [`docs/ops/ENV.md`](docs/ops/ENV.md). Không commit bí mật thật.
 
 ## Quy trình
