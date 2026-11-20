@@ -28,7 +28,7 @@ import urllib.request
 from collections.abc import Callable, Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from urllib.parse import unquote, urlsplit
+from urllib.parse import quote, unquote, urlsplit
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -45,13 +45,20 @@ QUOTE_RE = re.compile(r"^ {0,3}(?:>\s?)+")
 HTML_ANCHOR_RE = re.compile(r"<[a-z][a-z0-9]*\s[^>]*\b(?:id|name)=[\"']?([^\"'\s>]+)", re.IGNORECASE)
 LINE_ANCHOR_RE = re.compile(r"^L\d+(?:-L\d+)?$")  # `#L3`, `#L3-L9`: dòng mã trên GitHub, không phải tiêu đề
 URL_RE = re.compile(r"^https?://[^\s]+$")
-CODE_SPAN_RE = re.compile(r"(`+)(?!`).*?(?<!`)\1(?!`)")  # `x` và ``x ` y``: URL trong đó là ví dụ, không phải nguồn
+# Dòng phân cách bảng GFM (`|---|:-:|`): có `|` để không lẫn đường kẻ setext/`---`.
+TABLE_DELIM_RE = re.compile(r"^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)*\|?\s*$")
+# Dòng mở khối mới (CommonMark): tiêu đề ATX, mục danh sách, đường kẻ/setext — code span không vượt qua. Nhận rộng tay:
+# tách khối thừa chỉ làm backtick mở thành chữ (kiểm thêm link, có thể báo oan), không bao giờ che thừa link thật.
+BLOCK_START_RE = re.compile(r"^ {0,3}(?:#{1,6}(?:\s|$)|[-*+](?:\s|$)|\d{1,9}[.)](?:\s|$)|(?:[-*_=][ \t]*){3,}$|=+\s*$)")
+_SPAN_SPECIAL_RE = re.compile(r"[\\`]")  # ký tự đổi trạng thái của `mask_code_spans`
+_CELL_SPECIAL_RE = re.compile(r"[\\|]")  # ký tự đổi trạng thái của `table_cells`
 AUTOLINK_RE = re.compile(r"<(https?://[^\s<>]+)>")
 BARE_URL_RE = re.compile(r"https?://[^\s<>\[\]\"`|]+")
 SKIP_HOSTS = {"localhost", "127.0.0.1", "example.com", "example.org", "example.net"}
 SKIP_SUFFIXES = (".invalid", ".example", ".test", ".localhost")
-RETRY_GET_CODES = {501}  # HEAD bị từ chối → thử lại bằng GET trước khi kết luận; cùng mọi 4xx trừ GONE_CODES
-GONE_CODES = {404, 410}  # HEAD 404/410 đủ kết luận "không còn" — không gọi GET
+# HEAD bị từ chối → thử lại bằng GET trước khi kết luận; cùng mọi 4xx, kể cả 404/410: NIST nvlpubs và support.google.com
+# trả HEAD 404 nhưng GET 200 (đo 2026-11-16) — chỉ GET 404/410 mới kết luận "không còn".
+RETRY_GET_CODES = {501}
 USER_AGENT = "xtemplates-check-links/1 (+https://github.com/)"
 Fetcher = Callable[[str, float], int]
 
@@ -63,17 +70,145 @@ def iter_md(root: Path) -> Iterator[Path]:
         yield p
 
 
+def _closing_run(text: str, start: int, run: int) -> int:
+    """Vị trí chuỗi backtick dài ĐÚNG `run` đầu tiên từ `start` (chuỗi dài/ngắn hơn bỏ qua); không có → -1."""
+    k = text.find("`", start)
+    while k >= 0:
+        end = k
+        while end < len(text) and text[end] == "`":
+            end += 1
+        if end - k == run:
+            return k
+        k = text.find("`", end)
+    return -1
+
+
+def mask_code_spans(text: str) -> str:
+    """Che code span theo CommonMark (AUD-CODE-061): chuỗi N backtick mở span, đóng bằng chuỗi đúng N backtick kế tiếp;
+    ngoài span `\\` escape ký tự sau (backtick đã escape là chữ, `\\\\` là backslash nên backtick sau đó vẫn mở); không
+    đóng → chữ thường. Span (kể cả dấu) thành khoảng trắng: cú pháp link/URL trong đó là ví dụ, không phải link."""
+    out: list[str] = []
+    i = 0
+    while i < len(text):
+        hit = _SPAN_SPECIAL_RE.search(text, i)  # AUD-PERF-027: nhảy tới `\`/backtick kế, không duyệt từng ký tự
+        if hit is None:
+            out.append(text[i:])
+            break
+        if hit.start() > i:
+            out.append(text[i : hit.start()])
+            i = hit.start()
+        if text[i] == "\\":
+            out.append(text[i : i + 2])
+            i += 2
+            continue
+        j = i
+        while j < len(text) and text[j] == "`":
+            j += 1
+        close = _closing_run(text, j, j - i)
+        stop = j if close < 0 else close + (j - i)
+        out.append(text[i:stop] if close < 0 else re.sub(r"[^\n]", " ", text[i:stop]))  # giữ `\n`: span nhiều dòng
+        i = stop
+    return "".join(out)
+
+
+def table_cells(line: str) -> list[str]:
+    """Ô của một dòng bảng GFM: tách theo `|` chưa escape (GFM tách ô TRƯỚC khi xét code span; `\\|` ở lại trong ô)."""
+    cells: list[str] = []
+    cur: list[str] = []
+    i = 0
+    while i < len(line):
+        hit = _CELL_SPECIAL_RE.search(line, i)  # AUD-PERF-027: nhảy tới `\`/`|` kế
+        if hit is None:
+            cur.append(line[i:])
+            break
+        cur.append(line[i : hit.start()])
+        i = hit.start()
+        if line[i] == "\\":
+            cur.append(line[i : i + 2])
+            i += 2
+        else:
+            cells.append("".join(cur))
+            cur = []
+            i += 1
+    cells.append("".join(cur))
+    return cells
+
+
+def _quoted(line: str) -> bool:
+    return QUOTE_RE.match(line) is not None
+
+
+def _table_starts(lines: list[str], idx: int) -> bool:
+    """Dòng `idx` là tiêu đề bảng GFM: có `|` và dòng kế (cùng mức trích dẫn) là dòng phân cách có `|`."""
+    if idx + 1 >= len(lines) or "|" not in QUOTE_RE.sub("", lines[idx]):
+        return False
+    nxt = lines[idx + 1]
+    body = QUOTE_RE.sub("", nxt)
+    return "|" in body and TABLE_DELIM_RE.match(body) is not None and _quoted(nxt) == _quoted(lines[idx])
+
+
+def _table_ends(line: str, quoted: bool) -> bool:
+    """Bảng GFM dừng ở dòng trống hoặc khối mới (đổi mức trích dẫn, tiêu đề, danh sách…); dòng không `|` là hàng một ô."""
+    body = QUOTE_RE.sub("", line)
+    return not body.strip() or _quoted(line) != quoted or BLOCK_START_RE.match(body) is not None
+
+
+def _table_state(lines: list[str], idx: int, table: bool | None) -> bool | None:
+    """Trạng thái bảng ở dòng `idx`: None = ngoài bảng; True/False = trong bảng (bảng nằm trong `>` hay không)."""
+    if table is not None and _table_ends(lines[idx], table):
+        table = None
+    if table is None and _table_starts(lines, idx):
+        table = _quoted(lines[idx])
+    return table
+
+
+def mask_file(lines: list[str]) -> list[str | None]:
+    """Mỗi dòng đã che code span; dòng trong code fence (kể cả dòng rào) → None.
+
+    Code span theo CommonMark nằm trong MỘT khối: các dòng liền nhau của một đoạn ghép bằng `\\n` rồi mới quét (span
+    `foo\\nbar` đóng ở dòng sau, không ghép với backtick kế tiếp mà che link thật); khối mới ở dòng trống, rào, đổi mức
+    trích dẫn hay dòng khớp BLOCK_START_RE. Dòng bảng GFM (kể cả trong `>`) che theo từng ô: backtick lẻ của hai ô
+    không ghép thành một span che link ở ô giữa (D-378)."""
+    out: list[str | None] = [None] * len(lines)
+    block: list[int] = []
+
+    def flush() -> None:
+        if block:
+            for i, text in zip(block, mask_code_spans("\n".join(lines[i] for i in block)).split("\n"), strict=True):
+                out[i] = text
+            block.clear()
+
+    fence: str | None = None
+    table: bool | None = None  # None = ngoài bảng; True/False = trong bảng, bảng nằm trong `>` hay không
+    for idx, line in enumerate(lines):
+        m = FENCE_RE.match(line)
+        if m and (fence is None or m.group(1) == fence):
+            flush()
+            fence, table = (None if fence else m.group(1)), None
+            continue
+        if fence:
+            continue
+        body = QUOTE_RE.sub("", line)
+        table = _table_state(lines, idx, table)
+        if table is not None or not body.strip():
+            flush()
+            prefix = line[: len(line) - len(body)]
+            out[idx] = prefix + "|".join(map(mask_code_spans, table_cells(body))) if table is not None else line
+            continue
+        if block and (_quoted(lines[block[-1]]) != _quoted(line) or BLOCK_START_RE.match(body)):
+            flush()
+        block.append(idx)
+    flush()
+    return out
+
+
 def iter_lines(root: Path) -> Iterator[tuple[Path, int, str]]:
-    """(file, số dòng, dòng) của mọi dòng Markdown nằm ngoài code fence."""
+    """(file, số dòng, dòng đã che code span — `mask_file`) của mọi dòng Markdown nằm ngoài code fence."""
     for p in iter_md(root):
-        fence: str | None = None
-        for n, line in enumerate(p.read_text(encoding="utf-8-sig", errors="replace").splitlines(), start=1):
-            m = FENCE_RE.match(line)
-            if m and (fence is None or m.group(1) == fence):
-                fence = None if fence else m.group(1)
-                continue
-            if not fence:
-                yield p, n, line
+        masked = mask_file(p.read_text(encoding="utf-8-sig", errors="replace").splitlines())
+        for n, text in enumerate(masked, start=1):
+            if text is not None:
+                yield p, n, text
 
 
 def _unangle(target: str) -> str:
@@ -87,9 +222,10 @@ def iter_links(root: Path) -> Iterator[tuple[Path, int, str]]:
             yield p, n, _unangle(target)
 
 
-def line_urls(line: str) -> list[str]:
-    """URL http(s) trong một dòng: đích `[text](url)`, autolink `<url>`, URL trần; bỏ qua mọi thứ trong code span."""
-    rest = CODE_SPAN_RE.sub(" ", line)
+def line_urls(line: str, masked: bool = False) -> list[str]:
+    """URL http(s) trong một dòng: đích `[text](url)`, autolink `<url>`, URL trần; bỏ qua mọi thứ trong code span.
+    `masked`: dòng đã che (từ `iter_lines`) — không che lần hai, backtick lẻ còn lại của hai ô bảng không ghép lại."""
+    rest = line if masked else mask_code_spans(line)
     urls = [_unangle(t) for t in LINK_RE.findall(rest)]
     rest = LINK_RE.sub(" ", rest)
     urls += AUTOLINK_RE.findall(rest)
@@ -174,7 +310,7 @@ def external_urls(root: Path) -> dict[str, str]:
     """URL http(s) duy nhất (bỏ #anchor, bỏ host giả/nội bộ) → vị trí `file:dòng` đầu tiên."""
     found: dict[str, str] = {}
     for p, n, line in iter_lines(root):
-        for target in line_urls(line):
+        for target in line_urls(line, masked=True):
             if not URL_RE.match(target):
                 continue
             url = target.split("#", 1)[0]
@@ -206,18 +342,21 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def http_status(url: str, timeout: float, opener: urllib.request.OpenerDirector | None = None) -> int:
-    """Mã HTTP của URL (HEAD, rồi GET nếu HEAD trả 4xx khác 404/410 hoặc 501 — nhiều máy chủ từ chối HEAD bằng 400/403/
-    405 dù trang còn, PR #173). Timeout/lỗi mạng → `OSError` cho người gọi phân loại."""
+    """Mã HTTP của URL (HEAD, rồi GET nếu HEAD trả 4xx hoặc 501 — nhiều máy chủ từ chối HEAD bằng 400/403/404/405 dù
+    trang còn, PR #173). Timeout/lỗi mạng → `OSError` cho người gọi phân loại."""
+    parts = urlsplit(url)
+    reserved = "!$&'()*+,;=:@%/"  # giữ dấu phân cách và các byte đã mã hoá
+    target = parts._replace(path=quote(parts.path, safe=reserved), query=quote(parts.query, safe=reserved + "?"))
     op = opener or urllib.request.build_opener(_NoRedirect)
     code = 0
     for method in ("HEAD", "GET"):
-        req = urllib.request.Request(url, method=method, headers={"User-Agent": USER_AGENT})
+        req = urllib.request.Request(target.geturl(), method=method, headers={"User-Agent": USER_AGENT})
         try:
             with op.open(req, timeout=timeout) as resp:
                 return int(resp.status)
         except urllib.error.HTTPError as e:
             code = e.code
-        if code not in RETRY_GET_CODES and not (400 <= code < 500 and code not in GONE_CODES):
+        if code not in RETRY_GET_CODES and not 400 <= code < 500:
             break
     return code
 

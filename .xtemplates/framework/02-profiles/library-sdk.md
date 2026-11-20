@@ -4,7 +4,7 @@ kind: profile
 slug: library-sdk
 prefix: PRF-LIB
 modules: [04-standards/*, 05-architecture/*, 08-backend/reliability-and-errors, 10-workflow/*, 11-autonomous-loop/*, 12-security/*, 14-testing-quality/*, 15-operations/maintenance-and-lifecycle, 16-compliance-privacy/*, 17-product-project/*, 18-cross-cutting/*]
-updated: 2026-10-16
+updated: 2026-11-14
 ---
 
 # Hồ sơ: Thư viện / SDK / package
@@ -58,7 +58,7 @@ Xác minh ngày **2026-10-13** — **xác minh lại trước khi dùng**.
 - [ ] `PRF-LIB-002` **MUST** API surface công khai được **liệt kê tường minh** (`exports` map/`__all__`/`pub`) và có **API report** commit trong repo; PR làm đổi report phải gắn nhãn `breaking` hoặc `feature`. → Kiểm: `api-extractor run` (hoặc `cargo semver-checks`) trong CI; diff report ≠ rỗng mà không có nhãn → đỏ.
 - [ ] `PRF-LIB-003` **MUST** Breaking change đi kèm: ghi chú nâng cấp (migration guide), deprecation warning ở ≥ 1 MINOR trước (khi khả thi), codemod cho thay đổi cơ học lớn. → Kiểm: mục `Removed`/`Changed` trong CHANGELOG trỏ guide; test deprecation warning phát ra ở bản trước.
 - [ ] `PRF-LIB-004` **MUST** Type definitions đúng cho mọi cách tiêu thụ: ESM + CJS (hoặc ESM-only có ghi rõ), `exports` có `types` đúng điều kiện, không `any` ở API công khai. → Kiểm: `publint` 0 lỗi; `attw --pack` 0 vấn đề (không "Masquerading as CJS/ESM", không "FalseExportDefault"); `tsc --noEmit` trên project mẫu import package đã pack.
-- [ ] `PRF-LIB-005` **MUST** Publish qua OIDC (npm trusted publishing / PyPI Trusted Publishers) với **provenance/attestation**; không token dài hạn trong CI; `repository` trong manifest khớp repo thật; 2FA bắt buộc cho tài khoản publish. → Kiểm: `npm audit signatures` xanh trên bản đã publish; workflow có `permissions: id-token: write` và không có `NPM_TOKEN`; PyPI project hiện publisher. · Nguồn: npm provenance docs; PyPI trusted publishers; SLSA v1.2
+- [ ] `PRF-LIB-005` **MUST** Hồ sơ thư viện nâng `SEC-SUPPLY-021` ([`../12-security/supply-chain.md`](../12-security/supply-chain.md), nhà — SHOULD) lên MUST: publish qua OIDC với **provenance/attestation**; `repository` trong manifest khớp repo thật; 2FA bắt buộc cho tài khoản publish. → Kiểm: `npm audit signatures` xanh trên bản đã publish; workflow có `permissions: id-token: write` và không có `NPM_TOKEN`; PyPI project hiện publisher. · Nguồn: npm provenance docs; PyPI trusted publishers; SLSA v1.2
 - [ ] `PRF-LIB-006` **MUST** Ma trận phiên bản hỗ trợ ghi trong README + `engines`/`requires-python`/`rust-version` và CI test **đúng ma trận đó** (ít nhất bản thấp nhất và cao nhất). → Kiểm: workflow matrix khớp bảng README; `engines.node` tồn tại; `pnpm install --engine-strict` qua. · Nguồn: endoflife.date (chọn phiên bản còn hỗ trợ)
 - [ ] `PRF-LIB-007` **MUST** Không side effect khi import: không log, không đọc env/file, không fetch, không patch global; `sideEffects: false` (hoặc liệt kê file có) để tree-shake. → Kiểm: test `import` package rồi assert không có output/console/network; `package.json` có `sideEffects`.
 - [ ] `PRF-LIB-008` **MUST** Dependency tối thiểu: không kéo framework vào `dependencies` (dùng `peerDependencies` + `peerDependenciesMeta`), không dependency chỉ cho dev vào runtime, không ghim chặt `=x.y.z` dependency runtime trừ lý do bảo mật có ghi. → Kiểm: `knip` 0 dep thừa; script kiểm `dependencies` không chứa `react|vue|typescript|@types/*`; kích thước install (`npm pack --dry-run`) có ngân sách.
@@ -73,7 +73,7 @@ Xác minh ngày **2026-10-13** — **xác minh lại trước khi dùng**.
 - [ ] `PRF-LIB-017` **SHOULD** Tương thích ngược được kiểm bằng **test của bản trước** chạy trên bản mới (hoặc contract test với 1–2 dự án tiêu thụ thật) trước mỗi MINOR. → Kiểm: job `compat` chạy test suite tag trước với build mới.
 - [ ] `PRF-LIB-018` **MAY** Hỗ trợ dòng LTS riêng (vd `v1.x` nhận vá bảo mật 12 tháng sau `v2.0`) khi người dùng doanh nghiệp lớn. → Kiểm: nhánh `v1.x` có CI; bảng hỗ trợ ghi ngày hết hạn.
 - [ ] `PRF-LIB-019` **MAY** Reproducible build (`SOURCE_DATE_EPOCH`, lockfile ghim) để bên thứ ba xác minh tarball khớp nguồn. → Kiểm: build 2 lần cùng hash tarball; hướng dẫn xác minh trong docs.
-- [ ] `PRF-LIB-020` **SHOULD** Gói phát hành kèm hướng dẫn cho **agent của bên dùng** (`AGENTS.consumer.md`, `llms.txt` hoặc skill) nằm **trong tarball/wheel**, cùng phiên bản với mã; MCP của thư viện (nếu có) chạy cục bộ và đọc từ bản đã cài, không gọi tài liệu hosted có thể cũ hơn. → Kiểm: `npm pack --dry-run` (hoặc `unzip -l` wheel) liệt kê file hướng dẫn đó. · Nguồn: `seeker19110/stored` 06 §7f.2 (Zen DS: `AGENTS.consumer.md` + `llms.txt` đi kèm package, MCP stdio cục bộ không gọi mạng), 22 §2 (Remotion deprecate MCP vì tài liệu stale); đọc 2026-10-16
+- [ ] `PRF-LIB-020` **SHOULD** Gói phát hành kèm hướng dẫn cho **agent của bên dùng** (`AGENTS.consumer.md`, `llms.txt` hoặc skill) nằm **trong tarball/wheel**, cùng phiên bản với mã; MCP của thư viện (nếu có) chạy cục bộ và đọc từ bản đã cài, không gọi tài liệu hosted có thể cũ hơn. → Kiểm: `npm pack --dry-run` (hoặc `unzip -l` wheel) liệt kê file hướng dẫn đó. · Nguồn: `www-donghanhcungban-org/stored` 06 §7f.2 (Zen DS: `AGENTS.consumer.md` + `llms.txt` đi kèm package, MCP stdio cục bộ không gọi mạng), 22 §2 (Remotion deprecate MCP vì tài liệu stale); đọc 2026-10-16
 
 ## Cổng chất lượng tương đương
 
@@ -109,7 +109,7 @@ Xác minh ngày **2026-10-13** — **xác minh lại trước khi dùng**.
 - SLSA v1.2: <https://slsa.dev/spec/v1.2/> (mức Build theo nhà [`../12-security/supply-chain.md`](../12-security/supply-chain.md): L2 @M, L3 @L) — xác minh 2026-10-13.
 - Node.js LTS: <https://endoflife.date/api/nodejs.json>; Python: <https://endoflife.date/api/python.json>; Go, Rust tương tự — xác minh 2026-10-13.
 - Phiên bản npm: `tsdown`, `tsup`, `publint`, `@arethetypeswrong/cli`, `@microsoft/api-extractor`, `typedoc`, `vitest`, `@changesets/cli`, `release-please`, `semantic-release`, `size-limit`, `@biomejs/biome`, `knip`, `typescript`; PyPI `hatch`, `uv`, `mkdocs-material`; crates.io `cargo-deny` — xác minh 2026-10-13.
-- Changesets workflow (`add` → `version` → `publish`): <https://github.com/changesets/changesets/blob/main/docs/intro-to-using-changesets.md> (trang ghi "outdated", trỏ changesets.dev) — xác minh 2026-10-13.
+- Changesets workflow (`add` → `version` → `publish`): <https://changesets.dev/guide/getting-started> — xác minh 2026-11-14.
 - (chưa xác minh) `twine`, `cargo-semver-checks`, `griffe`, towncrier, Maven Central publishing, `mkdocstrings` — không tra ngày 2026-10-13.
 - Catalog: npm provenance, REA (Release Please → publish → verify CLI từ npm, TypeDoc) 23 §4 — `research/2026-10-13-stored-catalog-extraction.md`; khung cũ KHUNG-3 C6 (commit `1b80fe4`).
-- Catalog `seeker19110/stored` 06 §7f.2 (Zen DS: lớp cho AI agent trong package), 22 §2 (Remotion: MCP deprecated vì stale) — đọc 2026-10-16.
+- Catalog `www-donghanhcungban-org/stored` 06 §7f.2 (Zen DS: lớp cho AI agent trong package), 22 §2 (Remotion: MCP deprecated vì stale) — đọc 2026-10-16.

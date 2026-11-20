@@ -82,6 +82,10 @@ jobs:
       # `delivery_phase`) tới khi xt.yaml khai lệnh thật cho `lint` và `test`; typecheck/build rỗng vẫn được. Đặt trước
       # `setup` để đỏ sớm, không tốn thời gian cài phụ thuộc.
       # x-shop: Node ghim theo .nvmrc (Node 26 LTS — ADR-0009; Medusa 2.22 đòi >=22.22.0).
+      - name: Install framework Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.15.2"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
@@ -89,6 +93,8 @@ jobs:
         run: bash .xtemplates/scripts/dev-task.sh require lint test
       - name: setup — khoá `setup:` của xt.yaml (vắng = bỏ qua)
         run: bash .xtemplates/scripts/dev-task.sh setup
+      - name: Kiểm công cụ đo tải và tối ưu
+        run: pnpm load:test
       # x-shop (T-184, Q-02, DB-SEC-002): vai trò xshop_app (chỉ DML) + xshop_migrator (owner/DDL) trên Postgres của job, TRƯỚC
       # test tích hợp (db-roles.spec kiểm thuộc tính vai trò, quyền bảng, timeout cấp vai trò do migration đặt). Mật khẩu là
       # giá trị GIẢ mặc định của scripts/db-roles.sh (chứa SENTINEL; Postgres dùng một lần của job). Thêm bước, không đổi
@@ -195,7 +201,7 @@ jobs:
       - name: Fixture không PII thật — `node scripts/check-fixtures.mjs` (QA-DATA-002)
         run: node scripts/check-fixtures.mjs
       - name: Test của các script kiểm kiến trúc/dữ liệu
-        run: pnpm depcruise:test && pnpm check:sql-safety:test && pnpm check:routes:test && node --test scripts/check-fixtures.test.mjs scripts/check-slo.test.mjs scripts/ops/explain-hot-paths.test.mjs scripts/n-minus-1.test.mjs scripts/install-pnpm.test.mjs e2e/smoke-tags.test.mjs e2e/lb.test.mjs e2e/args.test.mjs && pnpm load:test && pnpm check:vi-diacritics:test && pnpm check:authz:test && pnpm check:schema:test && pnpm check:ci-local:test && pnpm check:migrations:test && pnpm check:units:test && pnpm check:env-doc:test && pnpm check:domains:test
+        run: pnpm depcruise:test && pnpm check:sql-safety:test && pnpm check:routes:test && node --test scripts/check-fixtures.test.mjs scripts/check-slo.test.mjs scripts/ops/explain-hot-paths.test.mjs scripts/n-minus-1.test.mjs scripts/install-pnpm.test.mjs e2e/smoke-tags.test.mjs e2e/lb.test.mjs e2e/args.test.mjs && pnpm check:vi-diacritics:test && pnpm check:authz:test && pnpm check:schema:test && pnpm check:ci-local:test && pnpm check:migrations:test && pnpm check:units:test && pnpm check:env-doc:test && pnpm check:domains:test
       - name: Schema module tuỳ biến (FK ON DELETE/index, NOT NULL, CHECK) — `pnpm check:schema` (DB-MODEL-004)
         run: pnpm check:schema
       # x-shop (T-102): migration đã có trên nhánh đích giữ nguyên byte (blob hash git) + migration mới không phá huỷ trong
@@ -260,6 +266,10 @@ jobs:
         with:
           persist-credentials: false
       # x-shop: Node ghim theo .nvmrc (Node 26 LTS — ADR-0009; Medusa 2.22 đòi >=22.22.0).
+      - name: Install framework Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.15.2"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
@@ -349,6 +359,10 @@ jobs:
         with:
           fetch-depth: 0 # ref gốc (nhánh đích / commit trước push) phải có trong clone
           persist-credentials: false
+      - name: Install framework Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.15.2"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
@@ -414,6 +428,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Install framework Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.15.2"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
@@ -477,6 +495,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Install framework Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.15.2"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc

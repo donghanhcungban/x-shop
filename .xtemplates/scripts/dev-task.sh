@@ -8,15 +8,17 @@
 # Thứ tự phân giải (đầu tiên thắng):
 #   1) KHAI BÁO: nếu có xt.yaml (YAML phẳng `task: lệnh`, agent đọc được) hoặc
 #      .claude/project-commands.sh (biến bash <task>=lệnh) → chạy lệnh khai báo.
-#   2) TỰ DÒ: nhận diện hệ sinh thái (node/python/go/rust/make) → chạy lệnh quy ước.
+#   2) TỰ DÒ: nhận diện hệ sinh thái (node/python/go/rust/make) → chạy lệnh quy ước. pytest có xdist chạy song song theo
+#      số nhân (D-367, D-369): `python3 -P -m pytest -q -n auto`, trừ khi cấu hình tắt xdist; XT_JOBS=N chọn số
+#      tiến trình (1 = `pytest -q` tuần tự; trần 4×số nhân). unittest giữ `discover` tuần tự.
 #   3) NO-OP: không có gì khớp → in thông báo skip, exit 0 (KHÔNG làm gãy dự án nào).
 #      Ngoại lệ (ADR-0011): autopilot đang chạy (.autopilot/state.json "active": true) mà `lint`/`test`
 #      rỗng hoặc là lệnh không kiểm gì (true, :, exit 0, echo …) → ĐỎ. Cổng rỗng không phải bằng chứng.
 #
 # Task hỗ trợ: format | lint | typecheck | test | build | gate | gate-par | gate-fast | test-shard | test-combine |
 #   test-weights | test-mode | e2e-mode | e2e | require | setup
-#   gate = chạy tuần tự build→typecheck→lint→test (cái nào phân giải được), đỏ 1 cái → fail. Cổng đầy đủ: CI, bước
-#          mở PR, `xt.py loop record` dùng đúng lệnh này. Khai `test_floor` (lệnh, chỉ khai báo) → chạy thêm sau `test`.
+#   gate = chạy tuần tự build→typecheck→lint→test (cái nào phân giải được), đỏ 1 cái → fail. Cổng đầy đủ = CI (ADR-0056;
+#          cục bộ trước cắt bản), `xt.py loop record` dùng đúng lệnh này. Khai `test_floor` → chạy thêm sau `test`.
 #   gate-par = cùng các lệnh của `gate` nhưng chia nhóm độc lập chạy nền CÙNG LÚC (D-128, job `gate` của CI mẫu):
 #          typecheck ∥ lint ∥ build → test (→ test_floor). Guard hỏi một lần cho mọi lệnh trước khi chạy nhóm nào; mỗi
 #          nhóm log riêng, in lại nguyên khối kèm nhãn nhóm khi xong (theo thứ tự nhóm); đỏ khi nhóm nào đỏ — exit code
@@ -60,6 +62,8 @@ if [ "$(basename "$_parent")" = ".xtemplates" ]; then _parent="$(dirname "$_pare
 ROOT="${CLAUDE_PROJECT_DIR:-$_parent}"
 DECL="$ROOT/.claude/project-commands.sh"
 YAML="$ROOT/xt.yaml"
+# Runtime riêng cho CLI khung trong CI mẫu. Lệnh của dự án vẫn dùng PATH của dự án.
+FRAMEWORK_PYTHON="${XT_FRAMEWORK_PYTHON:-python3}"
 
 log() { printf '[dev-task] %s\n' "$*" >&2; }
 
@@ -83,10 +87,19 @@ strip_comment() { # bỏ comment YAML: `#` ở đầu giá trị hoặc sau kho�
   done
   printf '%s' "$out"
 }
-yaml_get() { # giá trị khoá $1 trong xt.yaml; bỏ comment, rồi bỏ nháy chỉ khi bọc cả hai đầu ("..." hoặc '...')
-  local v # khoá trùng: dòng cuối thắng như `_yaml_keys` của xt.py (AUD-XFEAT-002; `doctor` báo lỗi khoá trùng)
+yaml_get() { # giá trị khoá $1 trong xt.yaml; bỏ comment, rồi bỏ nháy chỉ khi cả giá trị là MỘT chuỗi nháy
+  # ("a" "b" giữ nguyên; 'it''s' → it's — AUD-CODE-037; giống `yaml_scalar` của xt.py, test so hai bên)
+  local v q="'" two="''" dq='^"([^"\\]|\\.)*"$' sq="^'([^']|'')*'\$"
+  # khoá trùng: dòng cuối thắng như `_yaml_keys` của xt.py (AUD-XFEAT-002; `doctor` báo lỗi khoá trùng)
   v="$(grep -E "^$1:" "$YAML" | tail -1 | sed -E "s/^$1:[[:space:]]*//")"
-  strip_comment "$v" | sed -E "s/[[:space:]]+\$//; s/^\"(.*)\"\$/\\1/; s/^'(.*)'\$/\\1/"
+  v="$(strip_comment "$v" | sed -E 's/[[:space:]]+$//')"
+  if [[ $v =~ $dq ]]; then
+    v="${v:1:${#v}-2}"
+  elif [[ $v =~ $sq ]]; then
+    v="${v:1:${#v}-2}"
+    v="${v//$two/$q}"
+  fi
+  printf '%s\n' "$v"
 }
 declared_cmd() {
   # In ra lệnh khai báo cho $1 nếu có, ngược lại rỗng. xt.yaml (phẳng) ưu tiên hơn file bash.
@@ -114,9 +127,62 @@ node_has_script() {
   fi
 }
 
+ncpu() { nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2; }
+test_jobs() { # số tiến trình pytest-xdist: XT_JOBS nguyên dương (trần 4×số nhân), rác/không đặt → `auto`; log khi DT_HINT=1
+  local j="${XT_JOBS:-}" cap
+  cap=$(( $(ncpu) * 4 ))
+  if [[ "$j" =~ ^[1-9][0-9]{0,5}$ ]]; then
+    if [ "$j" -gt "$cap" ]; then
+      [ "${DT_HINT:-}" = 1 ] && log "XT_JOBS=$j vượt trần 4×số nhân — dùng $cap"
+      j="$cap"
+    fi
+    printf '%s' "$j"; return 0
+  fi
+  [ -n "$j" ] && [ "${DT_HINT:-}" = 1 ] && log "XT_JOBS='$j' không phải số nguyên dương — dùng mặc định (auto)"
+  printf 'auto'
+}
+pytest_xdist_off() { # 0 = tắt xdist có chủ ý: PYTEST_DISABLE_PLUGIN_AUTOLOAD, PYTEST_ADDOPTS hoặc cấu hình pytest ở ROOT có `no:xdist`
+  [ -n "${PYTEST_DISABLE_PLUGIN_AUTOLOAD:-}" ] && return 0
+  case "${PYTEST_ADDOPTS:-}" in *no:xdist*) return 0 ;; esac
+  local f
+  for f in pytest.ini .pytest.ini pytest.toml .pytest.toml pyproject.toml tox.ini setup.cfg; do
+    [ -f "$ROOT/$f" ] && grep -q 'no:xdist' "$ROOT/$f" 2>/dev/null && return 0
+  done
+  return 1
+}
+python_test_cmd() { # lệnh test Python tự dò; DT_HINT=1 (run_task) → log gợi ý/XT_JOBS đúng một lần mỗi lần chạy
+  local j rc=0
+  if command -v pytest >/dev/null 2>&1; then
+    if pytest_xdist_off; then echo "pytest -q"; return 0; fi
+    # `python3 -P -m pytest`: đúng interpreter vừa tìm thấy xdist (xdist phụ thuộc pytest) — `pytest` trên PATH có thể
+    # là pipx/venv khác không có xdist → `-n` lỗi "unrecognized arguments". `-P` (Python ≥ 3.11): không thêm cwd vào
+    # sys.path, như `pytest` — mô-đun ở gốc (`pytest.py`, `_pytest/`, `pluggy.py`, `argparse.py`…) không che pytest
+    # (D-371, review #446). Dò xdist cũng với `-P`; python3 < 3.11 không có `-P` (exit 2) → `pytest -q` như trước #444.
+    python3 -P -c 'import importlib.util as u,sys; sys.exit(u.find_spec("xdist") is None)' >/dev/null 2>&1 || rc=$?
+    if [ "$rc" = 0 ]; then
+      j="$(test_jobs)"
+      if [ "$j" = 1 ]; then echo "pytest -q"; else echo "python3 -P -m pytest -q -n $j"; fi
+      return 0
+    fi
+    if [ "$rc" = 2 ]; then
+      [ "${XT_JOBS:-}" != 1 ] && [ "${DT_HINT:-}" = 1 ] \
+        && log "python3 không có '-P' (< 3.11) — chạy 'pytest -q', không '-n' (cần Python ≥ 3.11 để chạy song song)"
+      echo "pytest -q"; return 0
+    fi
+    [ "${XT_JOBS:-}" != 1 ] && [ "${DT_HINT:-}" = 1 ] \
+      && log "gợi ý: cài pytest-xdist để chạy test song song theo số nhân (XT_JOBS=1: tuần tự, không gợi ý)"
+    echo "pytest -q"; return 0
+  fi
+  # unittest: `discover` tuần tự như cũ (D-369) — bộ chia theo module tự viết sai với setUpClass/setUpModule skip,
+  # load_tests, FunctionTestCase, lớp test định nghĩa ở module khác.
+  [ -d "$ROOT/tests" ] && echo "python3 -m unittest discover -s tests"
+  return 0
+}
+
 detected_cmd() {
-  # In ra lệnh tự-dò cho task $1, hoặc rỗng nếu không dò được.
-  local t="$1" pm
+  # In ra lệnh tự-dò cho task $1, hoặc rỗng nếu không dò được. Go (`go test` song song theo gói), Rust (`cargo test`
+  # song song theo luồng) và Node (jest/vitest dùng worker) đã chạy song song mặc định — giữ nguyên lệnh.
+  local t="$1" pm c
   # Node/JS: ưu tiên script cùng tên trong package.json
   if [ -f "$ROOT/package.json" ] && node_has_script "$t"; then
     pm="$(node_pm)"; echo "$pm run $t"; return 0
@@ -129,8 +195,7 @@ detected_cmd() {
       lint)      command -v ruff >/dev/null 2>&1 && { echo "ruff check ."; return 0; } ;;
       typecheck) command -v pyright >/dev/null 2>&1 && { echo "pyright"; return 0; }
                  command -v mypy >/dev/null 2>&1 && { echo "mypy ."; return 0; } ;;
-      test)      command -v pytest >/dev/null 2>&1 && { echo "pytest -q"; return 0; }
-                 [ -d "$ROOT/tests" ] && { echo "python3 -m unittest discover -s tests"; return 0; } ;;
+      test)      c="$(python_test_cmd)"; [ -n "$c" ] && { echo "$c"; return 0; } ;;
     esac
   fi
   # Go
@@ -190,11 +255,35 @@ loop_noop() { # $1=task $2=lệnh -> true (kèm log) nếu autopilot đang chạ
 
 # Lệnh xt.yaml do model viết được: qua guard của dự án trước khi chạy (LOOP-STOP-027). Không có python3/xt.py cạnh
 # script này → chạy như cũ (fail-open về luồng; dự án chưa cài harness).
+# XT_FRAMEWORK_PYTHON khai rõ thì phải qua bắt tay: in đúng dấu CPython 3.15 (ADR-0078). Tên không có (`command -v`
+# lỗi) hay chạy được mà không phải CPython 3.15 (vd `true` exit 0 không in gì) → 126, không bỏ qua guard (T-3958).
+FW_MARK="xt-cpython-3.15"
+FW_PROBE='import sys; print("xt-%s-%d.%d" % ((sys.implementation.name,) + tuple(sys.version_info[:2])))'
+FW_READY=""
+fw_ready() { # -> 0 hỏi guard được; 1 python3 mặc định vắng (fail-open như cũ); 126 runtime khai rõ không qua bắt tay
+  [ -n "$FW_READY" ] && return "$FW_READY"
+  if [ -n "${XT_FRAMEWORK_PYTHON:-}" ]; then
+    FW_READY=126
+    [ "$("$FRAMEWORK_PYTHON" -c "$FW_PROBE" 2>/dev/null)" = "$FW_MARK" ] && FW_READY=0
+    [ "$FW_READY" -eq 0 ] ||
+      log "$TASK: XT_FRAMEWORK_PYTHON='$FRAMEWORK_PYTHON' không qua bắt tay (cần CPython 3.15.x — ADR-0078) → không chạy lệnh nào"
+  else
+    FW_READY=1
+    command -v "$FRAMEWORK_PYTHON" >/dev/null 2>&1 && FW_READY=0
+  fi
+  return "$FW_READY"
+}
+fw_gate() { # $1=xt.py -> 0 hỏi guard; 1 bỏ qua (chưa cài harness/python3 vắng); 126 chặn
+  [ -f "$1" ] || return 1
+  fw_ready
+}
 guard_ok() { # $1=lệnh -> 0 nếu được chạy
   local xt; xt="$(dirname "$0")/xt.py"
-  [ -f "$xt" ] && command -v python3 >/dev/null 2>&1 || return 0
-  # Chỉ exit 126 (guard cấm) là chặn; xt.py sập (python cũ…) → chạy như cũ (fail-open về luồng, ADR-0002).
-  CLAUDE_PROJECT_DIR="$ROOT" python3 "$xt" guard-check -- "$1"
+  fw_gate "$xt"
+  case "$?" in 1) return 0 ;; 126) return 1 ;; esac
+  # Chỉ exit 126 là chặn: guard cấm lệnh, HOẶC xt.py từ chối runtime không phải CPython 3.15.x (ADR-0078 — chủ đích,
+  # không phải fail-open). xt.py sập kiểu khác (exit ≠ 126) → chạy như cũ (fail-open về luồng, ADR-0002).
+  CLAUDE_PROJECT_DIR="$ROOT" "$FRAMEWORK_PYTHON" "$xt" guard-check -- "$1"
   [ "$?" -ne 126 ]
 }
 # gate/gate-fast: hỏi guard MỘT lần cho mọi lệnh của lượt (stdin, các lệnh cách nhau bằng NUL — lệnh nhiều dòng của
@@ -210,20 +299,28 @@ guard_cached() { # $1=lệnh -> 0 nếu đúng lệnh này đã qua guard trong 
 }
 guard_ok_all() { # $@=lệnh -> 126 nếu guard cấm lệnh nào, 0 nếu được chạy (ghi GUARDED_CMDS khi xt.py xác nhận)
   local xt n c joined=""; xt="$(dirname "$0")/xt.py"
-  [ -f "$xt" ] && command -v python3 >/dev/null 2>&1 || return 0
-  n="$(printf '%s\0' "$@" | CLAUDE_PROJECT_DIR="$ROOT" python3 "$xt" guard-check --stdin)"
+  fw_gate "$xt"
+  case "$?" in 1) return 0 ;; 126) return 126 ;; esac
+  n="$(printf '%s\0' "$@" | CLAUDE_PROJECT_DIR="$ROOT" "$FRAMEWORK_PYTHON" "$xt" guard-check --stdin)"
   case "$?" in
     126) return 126 ;;
     0) [ -n "$n" ] && { for c in "$@"; do joined="$joined$GSEP$c$GSEP"; done; GUARDED_CMDS="$joined"; } ;;
   esac
   return 0
 }
-guard_turn() { # $@=task -> 0 nếu mọi lệnh phân giải được của lượt được chạy; 126 (kèm log) nếu guard cấm lệnh nào
+guard_turn() { # $@=task -> 0 nếu mọi lệnh phân giải được của lượt được chạy; 126 (kèm log) nếu guard cấm/runtime sai
   local t c; local -a cmds=()
   for t in "$@"; do c="$(resolve "$t")"; [ -n "$c" ] && cmds+=("$c"); done
   [ "${#cmds[@]}" -gt 0 ] || return 0
   guard_ok_all "${cmds[@]}" && return 0 # gọi thẳng, không ống: GUARDED_CMDS phải đặt ở shell này, không phải subshell
-  log "$TASK: guard cấm một lệnh của xt.yaml → không chạy lệnh nào (LOOP-STOP-027)"
+  # 126 cũng là xt.py từ chối runtime (ADR-0078): kiểm runtime thẳng (không hỏi guard lần hai — T-1715 một lần hỏi
+  # mỗi lượt) để log không đổ cho guard (AUD-DOC-296); runtime khai rõ hỏng thì fw_ready đã log
+  [ "$FW_READY" = 126 ] && return 126
+  if [ "$("$FRAMEWORK_PYTHON" -c "$FW_PROBE" 2>/dev/null)" = "$FW_MARK" ]; then
+    log "$TASK: guard cấm một lệnh của xt.yaml → không chạy lệnh nào (LOOP-STOP-027)"
+  else
+    log "$TASK: xt.py không chạy được bằng '$FRAMEWORK_PYTHON' (exit 126: cần CPython 3.15.x — ADR-0078; đặt XT_FRAMEWORK_PYTHON) → không chạy lệnh nào"
+  fi
   return 126
 }
 
@@ -248,7 +345,7 @@ run_counted() { # $@=lệnh như sau `bash -o pipefail -c` → exit của lệnh
 
 RAN=0
 run_task() { # $1=task -> chạy; 0 nếu ok hoặc no-op, khác 0 nếu lệnh fail hoặc no-op trong autopilot
-  local cmd; cmd="$(resolve "$1")"
+  local cmd; cmd="$(DT_HINT=1 resolve "$1")" # gợi ý của lệnh tự dò in ở lần phân giải này (guard_turn không in)
   if loop_noop "$1" "$cmd"; then return 3; fi
   if [ -z "$cmd" ]; then log "skip: chưa cấu hình/dò được '$1'"; return 0; fi
   RAN=$((RAN + 1))
@@ -258,6 +355,7 @@ run_task() { # $1=task -> chạy; 0 nếu ok hoặc no-op, khác 0 nếu lệnh 
   # `test | tee log` từng xanh giả khi test đỏ.
   case "$1" in
     test | test_fast | test_floor) ( cd "$ROOT" && run_counted bash -o pipefail -c "$cmd" ) ;;
+    format) run_format "$cmd" ;;
     *) ( cd "$ROOT" && bash -o pipefail -c "$cmd" ) ;;
   esac
 }
@@ -266,7 +364,8 @@ run_task() { # $1=task -> chạy; 0 nếu ok hoặc no-op, khác 0 nếu lệnh 
 changed_files() { # file đổi so với HEAD (theo gốc dự án) + file mới chưa ignore; không phải repo git/chưa có HEAD → 1
   git -C "$ROOT" rev-parse -q --verify HEAD >/dev/null 2>&1 || return 1
   # core.quotePath=false: tên file Unicode (tiếng Việt) ra nguyên văn, không thành "\303\241…" có nháy.
-  { git -C "$ROOT" -c core.quotePath=false diff --relative --name-only HEAD -- &&
+  # --no-renames: đổi tên giữ cả tên cũ để chọn đúng test của file cũ (như pre-bash-guard.sh — review #321).
+  { git -C "$ROOT" -c core.quotePath=false diff --no-renames --relative --name-only HEAD -- &&
     git -C "$ROOT" -c core.quotePath=false ls-files --others --exclude-standard; } | sort -u
 }
 fast_test_task() { # in task test cho gate-fast: test_fast nếu có lệnh thật và biết file đổi, ngược lại test
@@ -334,8 +433,8 @@ cov_dir() { # $1=thư mục → export XT_COV_DIR (đường dẫn tuyệt đố
 }
 xt_py() { # chạy xt.py cạnh script này (cần cho chia theo trọng số); thiếu python3/xt.py → log, 2
   local xt; xt="$(dirname "$0")/xt.py"
-  [ -f "$xt" ] && command -v python3 >/dev/null 2>&1 || { log "$TASK: cần python3 và $xt (khoá 'test_weights')"; return 2; }
-  CLAUDE_PROJECT_DIR="$ROOT" python3 "$xt" "$@"
+  [ -f "$xt" ] && command -v "$FRAMEWORK_PYTHON" >/dev/null 2>&1 || { log "$TASK: cần $FRAMEWORK_PYTHON và $xt (khoá 'test_weights')"; return 2; }
+  CLAUDE_PROJECT_DIR="$ROOT" "$FRAMEWORK_PYTHON" "$xt" "$@"
 }
 weights_file() { # đường dẫn tuyệt đối của `test_weights` trong xt.yaml; rỗng nếu không khai
   local w; w="$(declared_cmd test_weights)"
@@ -364,7 +463,7 @@ test_shard() { # $1=I (1..N) $2=N [$3=thư mục dữ liệu coverage]
   pick="$(printf '%s\n' "$ids" | shard_pick "$i" "$n")" || return $?
   [ -n "$pick" ] || { log "test-shard: shard $i/$n rỗng (chỉ $total id) — giảm N"; return 1; }
   log "test-shard $i/$n: $(printf '%s\n' "$pick" | grep -c .)/$total id"
-  printf '%s\n' "$pick" | (cd "$ROOT" && run_counted xargs -r -P "$(nproc 2>/dev/null || echo 2)" -n 1 bash -o pipefail -c "$unit" _)
+  printf '%s\n' "$pick" | (cd "$ROOT" && run_counted xargs -r -P "$(ncpu)" -n 1 bash -o pipefail -c "$unit" _)
 }
 test_weights() { # đo lại `test_weights` bằng `test_list` + `test_unit` (coverage vào thư mục tạm, như job `test` của CI)
   local list unit w ids d rc
@@ -442,6 +541,97 @@ e2e_run() { # $1=I $2=N (mặc định 1 1)
 json_ok() { # $1=file → 0 nếu là JSON hợp lệ; không có python3 thì không kiểm được (coi như không hợp lệ: không giữ bản sao)
   command -v python3 >/dev/null 2>&1 && python3 -c 'import json, sys; json.load(open(sys.argv[1], encoding="utf-8"))' "$1" >/dev/null 2>&1
 }
+# AUD-HAR-422: chỉ bỏ qua thư mục user hiện tại KHÔNG đi xuyên được (thiếu `x`): còn `x` mất `r` (chmod 311) thì formatter
+# đi theo chỉ mục git (`git ls-files | xargs …`, `pre-commit run --all-files`) vẫn mở được GO-NO-GO trong đó → dừng.
+# $1=stderr của find (LC_ALL=C) → 0 nếu mọi dòng là "Permission denied" trên thư mục có thật thiếu `x`; dòng lạ → 1.
+go_skippable() {
+  local line p
+  [ -s "$1" ] || return 1
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in *"find: "*": Permission denied") ;; *) return 1 ;; esac
+    p="${line#*find: }"; p="${p%: Permission denied}" # tên chương trình là argv[0]: `find` hay `/usr/bin/find`
+    case "$p" in "'"*"'") p="${p:1:${#p}-2}" ;; esac # GNU bọc nháy đơn, busybox không
+    go_untraversable "$p" || return 1
+  done <"$1"
+}
+# $1=đường find báo (tương đối ROOT) → 0 nếu đường đó HOẶC một thư mục tổ tiên (dưới ROOT) có thật và thiếu `x`: thư mục có
+# `r` mất `x` (0o600/0o644) vẫn liệt kê được tên con nên find báo `./pgdata/sub`, mà `[ -d ]` không stat được đường đó.
+go_untraversable() {
+  local p="$1"
+  while [ -n "$p" ] && [ "$p" != "." ] && [ "$p" != "/" ]; do
+    if [ -d "$ROOT/$p" ] && [ ! -x "$ROOT/$p" ]; then return 0; fi
+    case "$p" in */*) p="${p%/*}" ;; *) break ;; esac
+  done
+  return 1
+}
+# AUD-SEC-628: formatter khai báo không theo từng file (`prettier --write .`) vẫn chuẩn hoá được dòng §5 → chụp mọi
+# `GO-NO-GO*.md` (tên không phân biệt hoa thường) dưới gốc dự án trước khi chạy formatter, khôi phục file nào đổi/mất.
+go_snapshot() { # $1=thư mục chụp (rỗng, đã tồn tại)
+  local i=0 f rc=0 unx=() skipped=0
+  # Thư mục user này không đi xuyên được (thiếu `x`) cắt ngay trong find khi find hỗ trợ `-executable`/`-fprint0` (GNU), danh
+  # sách cắt ghi vào "$1/unx" để đếm: tên có dấu/nháy không qua escape của thông báo lỗi (`LC_ALL=C` → `\303\240`) nên không
+  # cần khớp tên. find không hỗ trợ → giữ đường cũ (go_skippable): tên lạ không khớp → dừng formatter (fail-closed).
+  if ( cd "$ROOT" && find . -maxdepth 0 -executable -fprint0 /dev/null ) >/dev/null 2>&1; then # chỉ xét mã thoát: không cần LC_ALL
+    unx=(-type d '!' -executable -prune -fprint0 "$1/unx" -o)
+  fi
+  # AUD-HAR-399: cả symlink mang tên GO-NO-GO (`GO-NO-GO-v9.md → draft.md`): `cp`/`cmp` đi theo liên kết nên chụp và khôi phục
+  # đúng đích; liên kết treo không có gì để chụp → bỏ khỏi danh sách.
+  ( cd "$ROOT" || exit 2; LC_ALL=C find . \( -name .git -o -name node_modules -o -name .venv \) -prune -o ${unx[@]+"${unx[@]}"} \( -type f -o -type l \) -iname 'go-no-go*.md' -print0 2>"$1/err" ) >"$1/all" || rc=$?
+  # AUD-HAR-417: thư mục không đọc được (dữ liệu docker mode 700 của user khác, chmod 000) — formatter chạy cùng user cũng
+  # không đọc được nên bỏ qua; find lỗi khác (hay lỗi không lời) vẫn dừng formatter. LC_ALL=C: thông báo find tiếng Anh.
+  if [ "$rc" -ne 0 ]; then
+    if ! go_skippable "$1/err"; then cat -- "$1/err" >&2; return 1; fi
+    skipped=$(wc -l <"$1/err" | tr -d ' ')
+  fi
+  if [ -s "$1/unx" ]; then skipped=$((skipped + $(tr -cd '\0' <"$1/unx" | wc -c | tr -d ' '))); fi
+  if [ "$skipped" -gt 0 ]; then log "$TASK: bỏ qua $skipped thư mục không đọc được khi tìm GO-NO-GO"; fi
+  while IFS= read -r -d '' f; do
+    if [ -f "$ROOT/$f" ]; then printf '%s\0' "$f"; fi
+  done <"$1/all" >"$1/list"
+  while IFS= read -r -d '' f; do
+    i=$((i + 1)); cp -p -- "$ROOT/$f" "$1/$i" || return 1
+  done <"$1/list"
+}
+go_restore() { # $1=thư mục chụp
+  local i=0 frc=0 f
+  while IFS= read -r -d '' f; do
+    i=$((i + 1))
+    if [ ! -f "$1/$i" ]; then frc=1; continue; fi
+    if ! cmp -s -- "$1/$i" "$ROOT/$f" 2>/dev/null; then
+      if cp -p -- "$1/$i" "$ROOT/$f"; then
+        log "$TASK: formatter đổi GO-NO-GO '$f' (chữ ký §5 là của người) → khôi phục bản trước"
+      else
+        frc=1
+      fi
+    fi
+  done <"$1/list" || return 1
+  return "$frc"
+}
+run_format() { # $1=lệnh; đối số còn lại được truyền cho bash -c như ở format-file
+  local snap rc=0
+  snap="$(mktemp -d)" || return 1
+  if ! go_snapshot "$snap"; then
+    log "$TASK: không sao lưu được GO-NO-GO — dừng formatter"
+    rm -rf -- "$snap"
+    return 1
+  fi
+  # AUD-HAR-394: bị ngắt giữa formatter (hook timeout gửi TERM, Ctrl-C) vẫn khôi phục GO-NO-GO và dọn bản chụp
+  trap 'go_restore "$snap" || log "$TASK: ngắt — không khôi phục được GO-NO-GO, bản sao ở $snap"; rm -rf -- "$snap"; exit 143' TERM INT HUP
+  ( cd "$ROOT" && bash -o pipefail -c "$@" ) || rc=$?
+  trap - TERM INT HUP
+  if ! go_restore "$snap"; then
+    log "$TASK: không khôi phục được GO-NO-GO — giữ bản sao ở '$snap'"
+    return 1
+  fi
+  rm -rf -- "$snap"
+  [ "$TASK" = format-file ] && return 0  # formatter của hook là best-effort; lỗi bảo vệ vẫn trả đỏ
+  return "$rc"
+}
+real_path() { # $1=đường dẫn (tương đối theo gốc dự án như lúc formatter chạy) → đường dẫn thật; thiếu realpath thì dùng python3
+  if command -v realpath >/dev/null 2>&1; then ( cd "$ROOT" && realpath -- "$1" ) 2>/dev/null && return 0; fi
+  command -v python3 >/dev/null 2>&1 && ( cd "$ROOT" && python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$1" ) 2>/dev/null
+  return 0
+}
 declared_format_file() {
   if yaml_has format_file; then yaml_get format_file; return 0; fi
   [ -f "$DECL" ] || return 0
@@ -472,6 +662,13 @@ case "$TASK" in
     run_task "$TASK"; exit $? ;;
   format-file)
     P="${2:-}"; [ -n "$P" ] || { log "format-file: thiếu path"; exit 0; }
+    # Dòng ký §5 của `GO-NO-GO*.md` là của người (AUD-SEC-628): formatter chuẩn hoá dòng guard đã cho qua thành dòng ký
+    # hợp lệ — không chạm file này, tên hay đích symlink (so tên chữ thường như guard `GO_NO_GO_NAME`).
+    for N in "$P" "$(real_path "$P")"; do
+      case "$(basename -- "${N:-.}" | tr '[:upper:]' '[:lower:]')" in
+        go-no-go*.md) log "skip format-file: GO-NO-GO*.md do người ký, formatter không chạm ('$P')"; exit 0 ;;
+      esac
+    done
     C="$(resolve_format_file "$P")"
     [ -n "$C" ] || { log "skip format-file: không có per-file formatter cho '$P'"; exit 0; }
     log "format-file: $C  (\$1=$P)"
@@ -490,15 +687,16 @@ case "$TASK" in
     else
       log "format-file: mẫu dựng sẵn của khung — không qua guard"
     fi
-    ( cd "$ROOT" && bash -c "$C" _ "$P" ) || true
+    format_rc=0
+    run_format "$C" _ "$P" || format_rc=$?
     if [ -n "$keep" ]; then
       json_ok "$F" || { cp -p -- "$keep" "$F"; log "format-file: formatter làm hỏng JSON '$P' → khôi phục bản trước"; }
       rm -f -- "$keep"
     fi
-    exit 0 ;;
+    exit "$format_rc" ;;
   gate)
     rc=0
-    # test_floor (T-1812): khoá có lệnh → chạy sau `test` (vd sàn Python như job CI py311); vắng/rỗng → không chạy.
+    # test_floor (T-1812): khoá có lệnh → chạy sau `test` (vd kiểm sàn runtime của dự án); vắng/rỗng → không chạy.
     FLOOR=""; [ -n "$(declared_cmd test_floor)" ] && FLOOR=test_floor
     guard_turn build typecheck lint test $FLOOR || exit 126
     for t in build typecheck lint test $FLOOR; do

@@ -4,7 +4,7 @@ kind: industry
 slug: saas-multitenant
 prefix: IND-SAAS
 modules: [16-compliance-privacy/*, 12-security/*, 08-backend/authn-authz, 08-backend/api-design, 08-backend/background-jobs-and-queues, 08-backend/caching, 08-backend/reliability-and-errors, 08-backend/integrations-and-webhooks, 09-database/data-modeling, 09-database/sensitive-data-and-access, 09-database/migrations, 09-database/backup-and-recovery, 09-database/indexing-and-query-performance, 05-architecture/resilience-and-scalability, 05-architecture/boundaries-and-modularity, 15-operations/slo-and-alerting, 15-operations/cost-management, 15-operations/deployment-strategies, 15-operations/observability, 14-testing-quality/performance-and-load, 14-testing-quality/integration-and-contract, 10-workflow/release-and-versioning]
-updated: 2026-10-16
+updated: 2026-11-02
 ---
 
 # Gói ngành: SaaS B2B đa tenant
@@ -108,7 +108,7 @@ tổ chức tài chính EU (ICT third-party) · NIS2 2022/2555.
 - [ ] `IND-SAAS-010` **MUST** Hợp đồng xử lý dữ liệu (DPA) mẫu với danh sách sub-processor công khai, thông báo thay đổi trước ≥ 30 ngày, cam kết thông báo vi phạm (≤ 72 h VN/EU; ≤ 3 ngày lịch SG), vị trí lưu trữ. → Kiểm: `docs/legal/DPA.md` + trang sub-processor có phiên bản; runbook sự cố có SLA thông báo khách hàng. · Nguồn: GDPR Art. 28; Luật 91/2025/QH15 Đ.17, Đ.23, Đ.37; PDPA SG s.26D
 - [ ] `IND-SAAS-011` **MUST** Cư trú dữ liệu: `tenant.region` quyết định cụm/vùng lưu; tenant VN (DN trong nước) lưu trong nước theo NĐ 333/2026 Đ.19; hạ tầng nước ngoài nằm trong hồ sơ chuyển dữ liệu. → Kiểm: policy IaC chặn tạo kho ngoài vùng cho tenant có `data_residency`; data map có `region`. · Nguồn: NĐ 333/2026/NĐ-CP Đ.19–20; Luật 91/2025/QH15 Đ.20
 - [ ] `IND-SAAS-012` **MUST@M** SSO (OIDC/SAML) + SCIM cho tenant; MFA bắt buộc cho tenant admin và nhân viên nội bộ; khôi phục khi IdP hỏng qua break-glass có MFA và audit. → Kiểm: test E2E SSO + SCIM deprovision thu hồi phiên ≤ 5 phút; xem [`../08-backend/authn-authz.md`](../08-backend/authn-authz.md). · Nguồn: ASVS 5.0 V6; SOC 2 CC6.1
-- [ ] `IND-SAAS-013` **MUST@M** SLO công bố theo gói (uptime, p95 API) với dashboard theo tenant; status page; cảnh báo theo error budget. → Kiểm: SLO trong `docs/ops/slo.md`; alert đã kích hoạt thử; xem [`../15-operations/slo-and-alerting.md`](../15-operations/slo-and-alerting.md). · Nguồn: SOC 2 A1 (Availability)
+- [ ] `IND-SAAS-013` **MUST@M** SLO công bố theo gói (uptime, p95 API) với dashboard theo tenant; status page; cảnh báo theo error budget. → Kiểm: SLO trong `docs/ops/SLO.md`; alert đã kích hoạt thử; xem [`../15-operations/slo-and-alerting.md`](../15-operations/slo-and-alerting.md). · Nguồn: SOC 2 A1 (Availability)
 - [ ] `IND-SAAS-014` **MUST@M** Migration schema online, lùi được, chạy theo lô/tenant có checkpoint; không khoá bảng dài; diễn tập trên bản sao production trước khi áp. → Kiểm: checklist migration + log diễn tập; xem [`../09-database/migrations.md`](../09-database/migrations.md). · Nguồn: thực hành nội bộ
 - [ ] `IND-SAAS-015` **MUST@M** Backup/khôi phục có thể **theo từng tenant** (point-in-time hoặc export) với RPO/RTO công bố; diễn tập khôi phục một tenant ≥ 2 lần/năm. → Kiểm: biên bản diễn tập; thời gian đo. · Nguồn: SOC 2 A1.2; [`../09-database/backup-and-recovery.md`](../09-database/backup-and-recovery.md)
 - [ ] `IND-SAAS-016` **MUST@L** Bằng chứng tuân thủ độc lập: SOC 2 Type II hoặc ISO/IEC 27001:2022 (± 27701:2025) với phạm vi gồm hệ thống SaaS; trust center công khai kiểm soát, pentest hằng năm. → Kiểm: báo cáo/chứng chỉ còn hạn; xem [`../16-compliance-privacy/records-and-audit-readiness.md`](../16-compliance-privacy/records-and-audit-readiness.md). · Nguồn: AICPA TSP 100; ISO/IEC 27001:2022
@@ -119,7 +119,7 @@ tổ chức tài chính EU (ICT third-party) · NIS2 2022/2555.
 - [ ] `IND-SAAS-021` **SHOULD** Dữ liệu người dùng cuối của tenant chỉ dùng cho mục đích cung cấp dịch vụ; không huấn luyện model/phân tích chéo tenant nếu không có đồng ý ghi trong hợp đồng. → Kiểm: data map ghi mục đích; flag `training_opt_in` theo tenant. · Nguồn: GDPR Art. 28(3)(a); Luật 91/2025/QH15 Đ.37
 - [ ] `IND-SAAS-022` **MAY** Cho tenant quản lý khoá riêng (BYOK/HYOK). → Kiểm: tài liệu + test xoay khoá. · Nguồn: ISO/IEC 27018
 - [ ] `IND-SAAS-023` **MAY** Cung cấp audit log streaming (SIEM) cho tenant enterprise. → Kiểm: endpoint/integration có test. · Nguồn: SOC 2 CC7.2
-- [ ] `IND-SAAS-024` **SHOULD** Thành phần AI có **trạng thái thích nghi lúc chạy** (prior/hiệu chỉnh theo batch, ngưỡng động, hạn mức leo thang, semantic cache, memory bank) được khoá theo tenant (mỗi tenant một instance/khoá trạng thái) hoặc dùng cấu hình cố định (vd `prior=none`); không chia sẻ trạng thái giữa tenant. → Kiểm: test tenant A gửi 100 request lệch nhãn → đầu ra của tenant B cho cùng input không đổi (so trước/sau). · Nguồn: `seeker19110/stored` 17 §2c.5 (AnyJev: prior batch là trạng thái theo tiến trình; hệ đa tenant nên tách `Decider` theo tenant hoặc dùng `content_free`/`none`; đọc 2026-10-16)
+- [ ] `IND-SAAS-024` **SHOULD** Thành phần AI có **trạng thái thích nghi lúc chạy** (prior/hiệu chỉnh theo batch, ngưỡng động, hạn mức leo thang, semantic cache, memory bank) được khoá theo tenant (mỗi tenant một instance/khoá trạng thái) hoặc dùng cấu hình cố định (vd `prior=none`); không chia sẻ trạng thái giữa tenant. → Kiểm: test tenant A gửi 100 request lệch nhãn → đầu ra của tenant B cho cùng input không đổi (so trước/sau). · Nguồn: `www-donghanhcungban-org/stored` 17 §2c.5 (AnyJev: prior batch là trạng thái theo tiến trình; hệ đa tenant nên tách `Decider` theo tenant hoặc dùng `content_free`/`none`; đọc 2026-10-16)
 
 ## Cổng chất lượng tương đương
 
@@ -155,4 +155,4 @@ tổ chức tài chính EU (ICT third-party) · NIS2 2022/2555.
 - ISO/IEC 27001:2022 (hết chuyển tiếp 31/10/2025): <https://www.iso.org/standard/27001>; ISO/IEC 27701:2025: <https://www.iso.org/standard/27701> — xác minh 2026-10-13.
 - EU Data Act 2023/2854 (áp dụng 12/09/2025); DORA 2022/2554 (17/01/2025); NIS2 2022/2555 — xác minh gián tiếp 2026-10-13 qua nguồn thứ cấp.
 - OWASP ASVS 5.0.0: <https://github.com/OWASP/ASVS/releases> — xác minh 2026-10-13.
-- Catalog `seeker19110/stored` 17 §2c.5 (AnyJev: prior batch theo tiến trình, tách theo tenant) — đọc 2026-10-16.
+- Catalog `www-donghanhcungban-org/stored` 17 §2c.5 (AnyJev: prior batch theo tiến trình, tách theo tenant) — đọc 2026-10-16.

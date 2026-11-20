@@ -3,7 +3,7 @@ title: Chiến lược kiểm thử: tháp, mức bao phủ, cổng, trách nhi�
 kind: module
 prefix: QA-STRAT
 applies_to: [all]
-updated: 2026-10-17
+updated: 2026-11-04
 ---
 
 # Chiến lược kiểm thử: tháp, mức bao phủ, cổng, trách nhiệm
@@ -99,6 +99,7 @@ Hiệu năng, bảo mật, độ tin cậy **không phải tầng của tháp**:
 - [ ] `QA-STRAT-021` **SHOULD** Test đỏ được phân loại vào một trong bốn nguyên nhân (bug thật · kỳ vọng sai · bó vào cài đặt · flaky/môi trường) trước khi sửa; bug thật giữ nguyên test, các nguyên nhân còn lại nêu bằng chứng ở bảng "Phân loại test đỏ". → Kiểm: commit `fix:` ghi nguyên nhân và đường tái hiện/trích SPEC; PR sửa assertion không kèm trích SPEC bị `reviewer` từ chối. · Nguồn: Fowler *Practical Test Pyramid* (test hành vi, không test cài đặt); [`LOOP-CI-001`](../11-autonomous-loop/self-healing-ci.md)
 - [ ] `QA-STRAT-022` **SHOULD** Tầng test chạy cho mỗi thay đổi chọn theo rủi ro thay đổi chạm (bảng "Chọn tầng theo rủi ro"), không chạy mọi tầng cho mọi PR và không bỏ tầng bắt buộc của vùng chạm auth/tiền/dữ liệu. → Kiểm: mô tả PR hoặc `PLAN.md` ghi tầng đã chọn và lý do cho thay đổi chạm vùng rủi ro; cổng PR ≤ ngân sách `QA-STRAT-010`.
 - [ ] `QA-STRAT-023` **SHOULD** Ở vùng `critical` (tiền, phân quyền, parser), người viết test độc lập với người viết code: test chấp nhận viết từ SPEC, không từ code đã có, bởi ngữ cảnh khác (vd `executor` thứ hai chỉ nhận SPEC + giao diện công khai); người điều phối giữ vai duy nhất ([`LOOP-ORCH-001`](../11-autonomous-loop/orchestration-and-subagents.md)). → Kiểm: PR vùng `critical` có test do lượt/ngữ cảnh khác với lượt viết code; mutation score vùng đó ≥ ngưỡng `QA-COV-005`. · Nguồn: arXiv 2412.14137 (bộ sinh test LLM quan sát cài đặt rồi lọc test đỏ nên khó tìm bug) — đọc tóm tắt 2026-10-17 (chưa xác minh toàn văn)
+- [ ] `QA-STRAT-024` **SHOULD** Kết quả cổng test/scan chỉ tính là đạt khi có bằng chứng đã chạy thật; dự án khai trong `PROJECT.md` (mục "Kiểm thử") với mỗi cổng: adapter + định dạng/phiên bản report, target/config, trạng thái hoàn tất, số test/thực thể đã chạy (khi định dạng hỗ trợ). Không tính là đạt: thiếu report, 0 test của suite bắt buộc, chỉ-report (`--fail-on`/ngưỡng chưa đặt), unknown/infrastructure-error (vd analysis bất đồng bộ chưa xong); parser chưa hỗ trợ thì báo "chưa kết luận", không đoán theo tên công cụ; kết quả gắn SHA/run ID. Nâng **MUST@L** khi cổng nằm trong required check. Định dạng máy đọc và lưu artefact: nhà [`BASE-GATE-014`](../01-baseline/quality-gates.md); cổng tự viết có fixture xấu: [`QA-STATIC-021`](static-analysis-and-code-quality.md). → Kiểm: `PROJECT.md` khai đủ các trường trên cho mỗi cổng; fixture report rỗng làm adapter đỏ; fixture 0 test của suite bắt buộc làm adapter đỏ; fixture thiếu target/report làm adapter đỏ; fixture trạng thái unknown báo "chưa kết luận" (không pass); kết quả lưu có SHA/run ID. · Nguồn: P1, P9; stored 29 §4–5, 30 §3–4, 31 §2.2 (chưa xác minh)
 
 ## Bẫy thường gặp
 
@@ -126,8 +127,8 @@ Hiệu năng, bảo mật, độ tin cậy **không phải tầng của tháp**:
 
 - Phiên bản công cụ (registry, xác minh 2026-10-13): `vitest` 5.0.4, `jest` 30.5.2 (npm); `pytest` 9.1.1 (PyPI, 2026-06-19); Go 1.27 (<https://endoflife.date/api/go.json>, 2026-08-19); JUnit 6.1.3 (<https://github.com/junit-team/junit-framework/releases>, 07/08, năm không hiện).
 - Playwright test configuration (`forbidOnly`, `retries`, `workers`, `trace`): <https://playwright.dev/docs/test-configuration> — xác minh 2026-10-13
-- Catalog `seeker19110/stored` mục 07 (claim matrix, negative control, record/replay), 23 §2.5 (gate aggregator, CI advisory), 23 §3.3 (`runtime.yaml`, `ci_guard.py`) — đọc 2026-10-13; `research/2026-10-13-stored-catalog-extraction.md` §2.4, §2.7.
+- Catalog `www-donghanhcungban-org/stored` mục 07 (claim matrix, negative control, record/replay), 23 §2.5 (gate aggregator, CI advisory), 23 §3.3 (`runtime.yaml`, `ci_guard.py`) — đọc 2026-10-13; `research/2026-10-13-stored-catalog-extraction.md` §2.4, §2.7.
 - Khung cũ X-stored `quality-supplements.md` Nhóm 2 mục 4 (E2E luồng chính, dữ liệu test tất định), commit `1b80fe4`.
 - Martin Fowler, *The Practical Test Pyramid* (đẩy test xuống tầng thấp nhất; test hành vi, không test cài đặt; E2E flaky nên giữ ít): <https://martinfowler.com/articles/practical-test-pyramid.html> — đọc 2026-10-17. Google Testing Blog, *Just Say No to More End-to-End Tests* (giữ hình tháp): <https://testing.googleblog.com/2015/04/just-say-no-to-more-end-to-end-tests.html> — đọc một phần 2026-10-17.
 - Bộ sinh test LLM và bài toán oracle: arXiv 2412.14137 (<https://arxiv.org/html/2412.14137v1>), 2601.05542, AugmenTest 2501.17461 (oracle suy từ tài liệu, không từ code) — **chỉ đọc tóm tắt tìm kiếm 2026-10-17, chưa đọc toàn văn**.
-- `seeker19110/stored` mục 09 §3 (kiểm ảnh agent QA 7 tầng + 4 verdict, 2026-10-17): nguồn của bảng phân loại test đỏ, chọn tầng theo rủi ro và ba mặt cắt ngang; verdict "missing branch" của bản gốc bị loại vì không làm test đỏ, thay bằng flaky/môi trường.
+- `www-donghanhcungban-org/stored` mục 09 §3 (kiểm ảnh agent QA 7 tầng + 4 verdict, 2026-10-17): nguồn của bảng phân loại test đỏ, chọn tầng theo rủi ro và ba mặt cắt ngang; verdict "missing branch" của bản gốc bị loại vì không làm test đỏ, thay bằng flaky/môi trường.
