@@ -3,7 +3,7 @@ title: Migration có phiên bản, lũy đẳng, đường lùi, expand/contract
 kind: module
 prefix: DB-MIG
 applies_to: [web-app, api-service, ai-agent, agentic-system, data-ml, monorepo, blockchain, mobile-app, desktop-app, embedded-iot]
-updated: 2026-10-14
+updated: 2026-11-04
 ---
 
 # Migration có phiên bản, lũy đẳng, đường lùi, expand/contract
@@ -63,7 +63,7 @@ updated: 2026-10-14
 - [ ] `DB-MIG-009` **MUST@L** Mỗi migration ghi đường lùi: migration bù trừ (down) đã test trên staging, hoặc nhãn `-- rollback: restore-from-backup` kèm link runbook. → Kiểm: lint đầu file có `-- rollback:`; job CI chạy up → down → up cho migration có down. · Nguồn: P8 · khung cũ `quality-supplements.md` §2 (rollback Supabase = bù trừ hoặc restore)
 - [ ] `DB-MIG-010` **MUST@L** Backfill dữ liệu lớn chạy theo lô có giới hạn (batch + sleep/throttle), lũy đẳng, có thể dừng/tiếp, không trong cùng transaction DDL. → Kiểm: script backfill có `batch_size`, điểm tiếp tục (`last_id`), test dừng giữa chừng rồi chạy lại = kết quả đúng. · Nguồn: PostgreSQL 18 §14.4 (bulk load) · P8
 - [ ] `DB-MIG-011` **MUST@M** Trước migration chạm dữ liệu production: backup/snapshot mới (hoặc PITR đã kiểm) và kế hoạch lùi ghi trong PR. → Kiểm: PR template có mục "Backup trước migrate: <link>"; runbook deploy có bước kiểm backup. · Nguồn: [`backup-and-recovery.md`](backup-and-recovery.md) · khung cũ `01-process-and-standards.md` GĐ6
-- [ ] `DB-MIG-012` **MUST@L** Migration chạy tách khỏi khởi động ứng dụng (job riêng trước rollout), code mới tương thích schema cũ và ngược lại trong cửa sổ rollout. → Kiểm: pipeline có bước `migrate` trước `deploy`; test tích hợp chạy code N+1 trên schema N (và N trên N+1 sau expand). · Nguồn: [`../15-operations/deployment-strategies.md`](../15-operations/deployment-strategies.md)
+- [ ] `DB-MIG-012` **MUST@L** Migration chạy tách khỏi khởi động ứng dụng (job riêng trước rollout), code mới tương thích schema cũ và ngược lại trong cửa sổ rollout; tại một thời điểm chỉ một migrator áp (khoá của công cụ, đã bật). → Kiểm: pipeline có bước `migrate` trước `deploy`; test tích hợp chạy code N+1 trên schema N (và N trên N+1 sau expand); matrix 2 migrator chạy đồng thời → khoá theo API công cụ (không mặc định công cụ có khoá: goose chỉ khoá khi Provider dùng `WithSessionLocker`/`WithLocker`) → chỉ 1 áp. · Nguồn: [`../15-operations/deployment-strategies.md`](../15-operations/deployment-strategies.md)
 - [ ] `DB-MIG-013` **SHOULD** Lint migration tự động (squawk/eugene/Atlas lint) trong pre-commit và CI với bộ rule đã chọn ghi ở repo. → Kiểm: `.squawk.toml`/cấu hình commit; job CI chạy. · Nguồn: squawk docs
 - [ ] `DB-MIG-014` **SHOULD** Tên file migration có timestamp + mô tả (`20261013120000_add_orders_tenant_id.sql`); CI chặn hai migration cùng số/trùng timestamp từ hai nhánh. → Kiểm: script kiểm trùng số (như `pre-push-gate.sh` xboss). · Nguồn: catalog 23 §4.3 (`pre-push-gate.sh` trùng số migration)
 - [ ] `DB-MIG-015` **SHOULD** Thêm cột có `DEFAULT` không volatile (PostgreSQL 11+ không rewrite); tránh `DEFAULT now()`-kiểu volatile trên bảng lớn trong một bước. → Kiểm: squawk rule `adding-field-with-default`; review. · Nguồn: PostgreSQL 18 ALTER TABLE Notes
@@ -101,10 +101,11 @@ updated: 2026-10-14
 
 ## Nguồn
 
+- goose Provider locker, sqlc verify (gọi cloud/query-set API): <https://pkg.go.dev/github.com/pressly/goose/v3>, <https://docs.sqlc.dev/en/latest/howto/verify.html> — tra 2026-11-04.
 - PostgreSQL 18: CREATE INDEX (CONCURRENTLY, invalid) <https://www.postgresql.org/docs/current/sql-createindex.html>; ALTER TABLE Notes (NOT VALID/VALIDATE, SET NOT NULL skip scan, ALTER TYPE rewrite, default không rewrite) <https://www.postgresql.org/docs/current/sql-altertable.html>; `lock_timeout`/`statement_timeout` <https://www.postgresql.org/docs/current/runtime-config-client.html>; §14.4 Populating <https://www.postgresql.org/docs/current/populate.html> — xác minh 2026-10-13.
 - MySQL 8.4 Online DDL (`ALGORITHM=INSTANT/INPLACE/COPY`, `LOCK=NONE`): <https://dev.mysql.com/doc/refman/8.4/en/innodb-online-ddl-operations.html> — xác minh 2026-10-13.
 - Supabase — Database migrations (`migration new`, `db diff`, `db reset`, `db push`; không có rollback): <https://supabase.com/docs/guides/deployment/database-migrations> — xác minh 2026-10-13.
 - Atlas Community Edition (Apache-2.0; `migrate lint`/drift là tính năng trả phí): <https://atlasgo.io/community-edition>; atlas 1.3.0 (brew) — xác minh 2026-10-13.
 - Phiên bản xác minh 2026-10-13: Flyway 13.10.0 (brew Apache-2.0; Maven Central flyway-core 13.10.0 2026-10-08), Liquibase 5.0.4 (Maven Central 2026-08-20; brew 4.33.0), golang-migrate 4.20.1 MIT (brew), Alembic 1.20.0 MIT (PyPI), drizzle-kit 0.31.11 MIT + drizzle-orm 0.45.4 Apache-2.0 (npm), Prisma dist-tags `latest` 8.0.0-rc.22 / `prev` 7.10.0 (<https://registry.npmjs.org/-/package/prisma/dist-tags>), Supabase CLI 2.120.0 MIT (npm), squawk-cli 2.68.0 (npm), eugene 0.8.3 MIT (crates.io). Flyway edition (undo/dry-run trả phí): trang community không liệt kê chi tiết — **(chưa xác minh đầy đủ)**.
 - Khung cũ `quality-supplements.md` §2 (quy trình migration Supabase, nghĩa đúng của rollback), `01-process-and-standards.md` GĐ6 — commit `1b80fe4`.
-- Catalog `seeker19110/stored` 23 §4.1 (rule migration lũy đẳng/timestamptz), 23 §4.3 (`protect-config.sh` deny sửa migration đã áp; `pre-push-gate.sh` trùng số), 12 §3 — đọc 2026-10-13.
+- Catalog `www-donghanhcungban-org/stored` 23 §4.1 (rule migration lũy đẳng/timestamptz), 23 §4.3 (`protect-config.sh` deny sửa migration đã áp; `pre-push-gate.sh` trùng số), 12 §3 — đọc 2026-10-13.

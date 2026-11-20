@@ -3,7 +3,7 @@ title: UX cho tính năng AI: minh bạch, streaming, xác nhận, sửa sai
 kind: module
 prefix: UX-AI
 applies_to: [web-app, mobile-app, desktop-app, static-site, game, monorepo, ai-agent, agentic-system, data-ml]
-updated: 2026-10-14
+updated: 2026-11-04
 ---
 
 # UX cho tính năng AI: minh bạch, streaming, xác nhận, sửa sai
@@ -59,7 +59,7 @@ updated: 2026-10-14
 - [ ] `UX-AI-017` **SHOULD** Không dark pattern với AI: không tự bật tính năng AI thu dữ liệu, không ẩn nút tắt, không "giả tiến độ" khi mô hình chưa chạy. → Kiểm: checklist dark-pattern trong PR (xem [`content-and-microcopy.md`](content-and-microcopy.md)).
 - [ ] `UX-AI-018` **SHOULD** Thay đổi hành vi mô hình (đổi phiên bản, đổi prompt hệ thống) được thông báo cho người dùng khi ảnh hưởng kết quả. → Kiểm: changelog trong sản phẩm có mục AI; test eval trước khi đổi. · Nguồn: HAX G18
 - [ ] `UX-AI-019` **MAY** Cho người dùng chỉnh "giọng/độ dài/ngôn ngữ" của output qua tuỳ chọn thay vì phải viết prompt. → Kiểm: tuỳ chọn tồn tại trong UI và được truyền vào request.
-- [ ] `UX-AI-020` **MAY** Media AI tạo gắn Content Credentials (C2PA) ngoài nhãn nhìn thấy. → Kiểm: file xuất có manifest đọc được bằng công cụ C2PA (phiên bản SDK **chưa xác minh**).
+- [ ] `UX-AI-020` **MAY** Ngừng dùng 2026-11-04 — gộp vào [`CMP-AI-017`](../16-compliance-privacy/ai-regulation.md) (nay SHOULD): media AI tạo gắn Content Credentials (C2PA) ngoài nhãn nhìn thấy, ký sau bước nén cuối, kèm watermark ẩn.
 
 ## Bẫy thường gặp
 
@@ -95,4 +95,4 @@ updated: 2026-10-14
 - WAI-ARIA APG Alert (live region, không cướp focus): <https://www.w3.org/WAI/ARIA/apg/patterns/alert/> — xác minh 2026-10-13.
 - Phiên bản npm `latest` (2026-10-13): ai 7.0.138 · @assistant-ui/react 0.15.28 · @ag-ui/core 1.0.2 · dompurify 3.4.17 · msw 3.0.3 · @playwright/test 1.64.0 · c2pa 0.30.17 (SDK JS; tính năng ký manifest **chưa xác minh**).
 - Google PAIR People + AI Guidebook: <https://pair.withgoogle.com/guidebook/> — **không truy cập được nội dung ngày 2026-10-13**; không trích.
-- Catalog `seeker19110/stored` mục 06 §6 (agentic UI: AG-UI, assistant-ui, CopilotKit), đọc 2026-10-13.
+- Catalog `www-donghanhcungban-org/stored` mục 06 §6 (agentic UI: AG-UI, assistant-ui, CopilotKit), đọc 2026-10-13.

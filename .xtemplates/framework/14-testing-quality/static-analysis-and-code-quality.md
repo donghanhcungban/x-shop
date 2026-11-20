@@ -3,7 +3,7 @@ title: Phân tích tĩnh: lint, type, complexity, dead code, trùng lặp, kiế
 kind: module
 prefix: QA-STATIC
 applies_to: [all]
-updated: 2026-10-21
+updated: 2026-11-04
 ---
 
 # Phân tích tĩnh: lint, type, complexity, dead code, trùng lặp, kiến trúc
@@ -56,7 +56,7 @@ Mặc định cho repo mới: **Biome + TypeScript strict + knip + jscpd + depen
 - [ ] `QA-STATIC-018` **MAY** Ngừng dùng 2026-10-14 — gộp vào [`LOOP-HARNESS-004`](../11-autonomous-loop/harness-files.md)/[`005`](../11-autonomous-loop/harness-files.md) (`PROGRESS.md` tươi bằng máy: SHA tổ tiên HEAD); hợp đồng repo kiểm bằng `xt.py validate`.
 - [ ] `QA-STATIC-019` **MAY** SonarQube Community Build tự host làm bảng tổng hợp khi đội > 1; không thay cổng CI.
 - [ ] `QA-STATIC-020` **MAY** Fitness function AST tự viết cho quy tắc riêng (vd mọi route có kiểm quyền; SQL chạm PII phải nhận context) khi lint sẵn không đủ.
-- [ ] `QA-STATIC-021` **SHOULD** Mỗi luật/cổng tự viết (semgrep, ESLint, script `check:*`) có fixture xấu phải fail và fixture tốt phải pass, chạy trong CI. Nâng thành **MUST@L** khi cổng nằm trong required check. → Kiểm: `semgrep --test`, ESLint `RuleTester`, script chạy trên `fixtures/bad.*` cho exit ≠ 0 và trên `fixtures/good.*` cho exit 0. · Nguồn: stored 06 §7f (self-test 205 luật), §7b (fixture "plausible-wrong")
+- [ ] `QA-STATIC-021` **SHOULD** Mỗi luật/cổng tự viết (semgrep, ESLint, script `check:*`) có fixture xấu phải fail và fixture tốt phải pass, chạy trong CI. Nâng thành **MUST@L** khi cổng nằm trong required check. Cổng có kết quả riêng cho "không đánh giá được" (thiếu công cụ, input hỏng, 0 file khớp: exit 2, CI coi là đỏ; hook giữ ngữ nghĩa exit của harness) — hợp đồng kết quả cổng: [`QA-STRAT-024`](test-strategy.md). → Kiểm: `semgrep --test`, ESLint `RuleTester`, script chạy trên `fixtures/bad.*` cho exit ≠ 0 và trên `fixtures/good.*` cho exit 0; fixture "input hỏng" và "0 file" → exit 2, job đỏ. · Nguồn: stored 06 §7f (self-test 205 luật), §7b (fixture "plausible-wrong"), 22 §9e (readcheck.mjs 0/1/2), 12 §4b (fail-open/closed) (chưa xác minh — theo stored); hook exit code: https://code.claude.com/docs/en/hooks (tra 2026-11-04)
 
 ## Bẫy thường gặp
 
@@ -94,6 +94,6 @@ Mặc định cho repo mới: **Biome + TypeScript strict + knip + jscpd + depen
 - Phiên bản (registry, xác minh 2026-10-13): npm `@biomejs/biome` 2.5.15, `oxlint` 1.87.0, `eslint` 10.12.0, `typescript` 7.0.2, `knip` 6.41.0, `jscpd` 5.4.1, `dependency-cruiser` 18.6.0; PyPI `ruff` 0.17.0, `pyright` 1.1.414, `mypy` 2.4.0, `import-linter` 2.15, `vulture` 2.16, `radon` 6.0.1 (2023 — bảo trì chậm), `uv` 0.13.0.
 - SonarQube Community Build LGPL-3.0: <https://github.com/SonarSource/sonarqube> · <https://www.sonarsource.com/open-source-editions/> — xác minh 2026-10-13
 - import-linter: <https://import-linter.readthedocs.io/> (trang contract types trả 404 ngày 2026-10-13 — kiểm tài liệu phiên bản hiện hành)
-- Catalog `seeker19110/stored` 13 §4b–4c (stack quality gate, pre-commit (bản 4.7.0 xác minh PyPI 2026-10-12), hook `--no-verify`, uv/ruff thuộc OpenAI), 23 §2.5 (gate aggregator), 23 §3.3 (fitness function AST, coverage ratchet), 23 §4.5 (`validate_repo.py`) — đọc 2026-10-13.
+- Catalog `www-donghanhcungban-org/stored` 13 §4b–4c (stack quality gate, pre-commit (bản 4.7.0 xác minh PyPI 2026-10-12), hook `--no-verify`, uv/ruff thuộc OpenAI), 23 §2.5 (gate aggregator), 23 §3.3 (fitness function AST, coverage ratchet), 23 §4.5 (`validate_repo.py`) — đọc 2026-10-13.
 - Khung cũ X-stored `quality-supplements.md` Nhóm 2 mục 9 "Tối ưu mã nguồn" (nguyên tắc vàng, checklist dead code/trùng lặp/dep/bundle, khi nào không refactor), commit `1b80fe4` — đọc 2026-10-13.
-- Catalog `seeker19110/stored` mục 06 §7f (`usage:selftest`: 205 luật, mỗi luật bắt được lỗi trong fixture xấu, fixture tốt sạch), §7b (diagram-design: fixture "plausible-wrong" cho cổng kiểm) — đọc 2026-10-16.
+- Catalog `www-donghanhcungban-org/stored` mục 06 §7f (`usage:selftest`: 205 luật, mỗi luật bắt được lỗi trong fixture xấu, fixture tốt sạch), §7b (diagram-design: fixture "plausible-wrong" cho cổng kiểm) — đọc 2026-10-16.

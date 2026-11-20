@@ -52,3 +52,8 @@ Máy chia ba nhóm, không hỏi người: **máy chặn** (không đảo ngư�
 - UI (bỏ nếu không có giao diện): theo `DESIGN.md` và token; xong việc UI khi `<XT> contrast <theme.css> --pairs <file>` xanh (`UX-DS-003`, `UX-DS-020`).
 - Tên phiên **bắt buộc, đặt ngay đầu phiên**: `<Tên repo> — <tên nhánh>` (`LOOP-HARNESS-028`).
 - Giao tiếp: tiếng Việt có dấu, ngắn, dẫn đầu bằng kết quả; báo cáo cuối: đã làm · bằng chứng · D-NNN · còn treo · đề xuất.
+
+## /factory
+
+Dùng `/factory <yêu cầu>` để mở hoặc tiếp tục một vòng sản phẩm. Đọc trạng thái bằng
+`python3 .xtemplates/scripts/xt_flow.py --json` rồi chạy các cổng của dự án.
