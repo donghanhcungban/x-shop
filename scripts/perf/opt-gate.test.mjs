@@ -97,7 +97,10 @@ test("--out ghi before.json/after.json có ≥ 10 mẫu và commit của từng 
   const a = JSON.parse(readFileSync(join(out, "after.json"), "utf8"));
   assert.equal(b.samples.length, 10);
   assert.equal(a.samples.length, 10);
-  assert.equal(b.commit, baseSha);
+  assert.equal(b.schema, 2);
+  assert.equal(a.schema, 2);
+  assert.equal(b.head, baseSha);
+  assert.equal(a.head, git(clone, "rev-parse", "HEAD"));
   assert.deepEqual(a.cmd, b.cmd);
 });
 

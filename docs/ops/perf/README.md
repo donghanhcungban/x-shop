@@ -28,4 +28,4 @@ Chi tiết dataset, điều kiện tái lập, năng lực đo được, chỗ n
 
 ## Vòng tối ưu (T-127, LOOP-OPT)
 
-Task tối ưu chỉ mở khi có mục tiêu số + điều kiện đo; máy quyết giữ/hoàn tác bằng `xt.py perf compare` (≥ 10 mẫu/bên, baseline đo lại trên commit gốc cùng lượt) qua `scripts/perf/opt-gate.sh` (lấy từ commit gốc, khoá `scripts/load/*`, `scripts/perf/*` bằng `perf guard --locked`). Bộ đo PDP: `scripts/load/bench-pdp.mjs` trên backend tải của từng cây (`scripts/load/serve.mjs start|stop`). Mục tiêu, Gate mẫu cho T-060 và sổ thử: [`PERF-LOG.md`](PERF-LOG.md).
+Task tối ưu chỉ mở khi có mục tiêu số + điều kiện đo; máy quyết giữ/hoàn tác bằng `xt.py perf compare` (≥ 10 mẫu/bên, baseline đo lại trên commit gốc cùng lượt) qua `scripts/perf/opt-gate.sh` (lấy từ commit gốc, khoá `scripts/load/*`, `scripts/perf/*` bằng `perf guard --locked`). Bộ đo PDP: `scripts/load/bench-pdp.mjs` trên backend tải của từng cây (`scripts/load/serve.mjs start|stop`). Mẫu v2 lưu SHA Git của từng cây trong trường `head` của `before.json` và `after.json`. Mục tiêu, Gate mẫu cho T-060 và sổ thử: [`PERF-LOG.md`](PERF-LOG.md).
