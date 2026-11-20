@@ -57,3 +57,5 @@ Máy chia ba nhóm, không hỏi người: **máy chặn** (không đảo ngư�
 
 Dùng `/factory <yêu cầu>` để mở hoặc tiếp tục một vòng sản phẩm. Đọc trạng thái bằng
 `python3 .xtemplates/scripts/xt_flow.py --json` rồi chạy các cổng của dự án.
+
+Khi sửa storefront hoặc backend, chạy `pnpm --filter @x-shop/storefront dev` hoặc `pnpm --filter @x-shop/backend dev` sau khi bật dịch vụ cục bộ. Khi sửa domain, chạy `pnpm --filter @x-shop/domain exec vitest watch` (thêm tên tệp để tập trung). Trước khi trình, chạy cổng dự án.
